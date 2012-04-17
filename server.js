@@ -12,7 +12,7 @@ var server = {}, config = {};
 // default config
 config = {
 	server: {
-		host: "localhost",
+		host: "192.168.0.10",
 		port: 8080
 	}
 }
@@ -73,6 +73,7 @@ server.http.handleJSP = function(uri, post, request, response){
 		break;
 		case "p4":
 			// Not sure if this works
+			console.log(post);
 			var a = new Buffer(8), b;
 			a[0] = 0x7f;
 			a[1] = 0x03;
@@ -87,6 +88,9 @@ server.http.handleJSP = function(uri, post, request, response){
 			response.write(b, "binary");
 			response.end();
 		break;
+		case "locate":
+			response.end("ping "+config.server.host+" \r\nbroad "+config.server.host+" \r\n");
+		break;
 		default:
 			return false;
 		break;
@@ -97,6 +101,7 @@ server.http.start = function(){
 	http.createServer(function(request, response) {
 		session(request, response, function(request, response){
 			var uri = url.parse(request.url).pathname;
+			console.log(request.url);
 			var isJSP = uri.match(".jsp") ? !!uri.match(".jsp")[0] : false;
 			var post;
 			if (request.method == 'POST') {
@@ -110,8 +115,12 @@ server.http.start = function(){
  	   		}
 			switch(uri){
 				case "/":
-				server.http.loadFile("index.html", response);
-					return;
+					server.http.loadFile("index.html", response);
+				return;
+				case "/vl":
+					response.writeHead(200, {});
+					response.end();
+				return;
 				default: 
 					/* 
 						If it ends with .jsp, do more processing. 
