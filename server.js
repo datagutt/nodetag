@@ -12,7 +12,7 @@ var server = {}, config = {};
 // default config
 config = {
 	server: {
-		host: "192.168.0.10",
+		host: "192.168.0.8",
 		port: 8080
 	}
 }
