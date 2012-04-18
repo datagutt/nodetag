@@ -12,8 +12,8 @@ var server = {}, config = {};
 // default config
 config = {
 	server: {
-		host: "192.168.0.8",
-		port: 8080
+		host: "localhost",
+		port: 8089
 	}
 }
 server.http = {};
@@ -73,23 +73,27 @@ server.http.handleJSP = function(uri, post, request, response){
 		break;
 		case "p4":
 			// Not sure if this works
-			console.log(post);
+			post && console.log(post);
 			var a = new Buffer(8), b;
-			a[0] = 0x7f;
-			a[1] = 0x03;
-			a[2] = 0x00;
-			a[3] = 0x00;
-			a[5] = 0x01;
-			a[6] = 0x10;
-			a[7] = 0xff;
-			a[8] = 0x0a;
+			a[0] = "0x7f";
+			a[1] = "0x03";
+			a[2] = "0x00";
+			a[3] = "0x00";
+			a[4] = "0x01";
+			a[5] = "0x10";
+			a[6] = "0xff";
+			a[7] = "0x0a";
 			b = new Buffer(a.toString());
+			console.log(b);
 			response.writeHead(200, {});
 			response.write(b, "binary");
 			response.end();
 		break;
 		case "locate":
-			response.end("ping "+config.server.host+" \r\nbroad "+config.server.host+" \r\n");
+			response.writeHead(200, {});
+			response.write("ping "+config.server.host+" \r\n");
+			response.write("broad "+config.server.host+" \r\n");
+			response.end();
 		break;
 		default:
 			return false;
@@ -101,9 +105,12 @@ server.http.start = function(){
 	http.createServer(function(request, response) {
 		session(request, response, function(request, response){
 			var uri = url.parse(request.url).pathname;
-			console.log(request.url);
+			// Replace the /vl, so people dont need that at end
+			uri = uri.replace("/vl/", "/");
+			//console.log(request.url);
 			var isJSP = uri.match(".jsp") ? !!uri.match(".jsp")[0] : false;
 			var post;
+			// add post data to variable named post if there is any
 			if (request.method == 'POST') {
 				var body = '';
 				request.on('data', function (data) {
@@ -132,7 +139,7 @@ server.http.start = function(){
 					if(realuri && server.http.handleJSP(realuri, post, request, response)){
 					}else{
 						console.log("[404] " + uri);
-						response.writeHeader(404, {"Content-Type": "text/plain"});
+						response.writeHead(404, {"Content-Type": "text/plain"});
 						response.end("404 Not Found\n");
 					}
 				break;
