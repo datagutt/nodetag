@@ -12,8 +12,8 @@ var server = {}, config = {};
 // default config
 config = {
 	server: {
-		host: "localhost",
-		port: 8089
+		host: "192.168.0.8",
+		port: 8080
 	}
 }
 server.http = {};
@@ -65,6 +65,38 @@ server.http.getBootcode = function(response){
 		});
 	});
 }
+function encode_array(a) {
+  var b = new Buffer(a.length);
+  [].forEach.call(a, function(e, i){
+		b[i] = e;
+  });
+  return new Buffer(b.toString());
+}
+
+function encode_length(a, length) {
+	test = a.push(length >> 16, (length >> 8) & 0xff, length & 0xff);
+	return test;
+}
+
+function encode_clear_ambient(a, type) {
+	return a.push(a, 0, type);
+}
+
+function encode_set_ambient(a, type, value) {
+	return a.push(a, type, value);
+}
+
+function encode_left_ear(a, pos) {
+	return a.push(a, 4, $os);
+}
+
+function encode_right_ear(a, pos) {
+   return a.push(a, 5, pos);
+}
+
+function encode_ear_positions(a, left, right) {
+	return a.push(a, 4, left, 5, right);
+}
 server.http.handleJSP = function(uri, post, request, response){
 	post && console.log(post);
 	switch(uri){
@@ -72,27 +104,36 @@ server.http.handleJSP = function(uri, post, request, response){
 			server.http.getBootcode(response);
 		break;
 		case "p4":
+			var ambient = [];
+			var rand1 = Math.floor((Math.random()*18)+1);
+			var rand2 = Math.floor((Math.random()*18)+1);
 			// Not sure if this works
 			post && console.log(post);
-			var a = new Buffer(8), b;
-			a[0] = "0x7f";
-			a[1] = "0x03";
-			a[2] = "0x00";
-			a[3] = "0x00";
-			a[4] = "0x01";
-			a[5] = "0x10";
-			a[6] = "0xff";
-			a[7] = "0x0a";
-			b = new Buffer(a.toString());
-			console.log(b);
+			// Handle ping
+			console.log("[PINGED]");
+			var data = [0x7f];
+			// encode ping interval block
+			data.push(0x03, 0x00, 0x00, 0x01, 10);
+			// build up an ambient block
+			encode_set_ambient(ambient, 1,0);
+			//encode_ear_positions(ambient, rand1, rand2);
+			data.push(4);
+			encode_length(data, ambient.length + 4);
+			data.push(0, 0, 0, 0);
+			[].forEach.call(ambient, function(e, i){
+				data.push(e);
+			});
+			// encode end of data
+			data.push(0xff, 0x0a);
+			encoded = encode_array(data);
 			response.writeHead(200, {});
-			response.write(b, "binary");
+			response.write(encoded, "binary");
 			response.end();
 		break;
 		case "locate":
 			response.writeHead(200, {});
-			response.write("ping "+config.server.host+" \r\n");
-			response.write("broad "+config.server.host+" \r\n");
+			response.write("ping "+config.server.host+":"+config.server.port+" \r\n");
+			response.write("broad "+config.server.host+":"+config.server.port+" \r\n");
 			response.end();
 		break;
 		default:
@@ -107,7 +148,7 @@ server.http.start = function(){
 			var uri = url.parse(request.url).pathname;
 			// Replace the /vl, so people dont need that at end
 			uri = uri.replace("/vl/", "/");
-			//console.log(request.url);
+			console.log(request.url);
 			var isJSP = uri.match(".jsp") ? !!uri.match(".jsp")[0] : false;
 			var post;
 			// add post data to variable named post if there is any
