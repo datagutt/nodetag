@@ -15,8 +15,12 @@ config = config || {
 	server: {
 		host: '192.168.0.8',
 		port: 8080
+	},
+	db: {
+		database : 'nodetag'
 	}
 }
+var db = require('mongojs').connect(config.db.database, ['rabbits']);
 server.http = {};
 server.http.loadFile = function(uri, response){
 	var filename = './public/' + uri;
@@ -73,38 +77,41 @@ server.http.handleJSP = function(uri, get, request, response){
 		break;
 		case 'p4':
 			var ambient = [], isAmbient;
-			// Not sure if this works
-			get && console.log(get);
 			// Handle ping
 			console.log('[PINGED]');
 			var data = [0x7f];
-			console.log(request.session);
 			// encode ping interval block
 			data.push(0x03, 0x00, 0x00, 0x01, 10);
-			// build up an ambient block
-			if(request.session.action == 'ambient' && request.session.number){
-				encode.set_ambient(ambient, 1, request.session.number);
-				isAmbient = 1;
-			}
-			// Dont blink if cleared
-			if(request.session.action == 'clear'){
-				encode.clear_ambient(ambient, 1);
-				isAmbient = 1;
-			}
-			if(isAmbient){
-				data.push(4);
-				encode.length(data, ambient.length + 4);
-				data.push(0, 0, 0, 0);
-				[].forEach.call(ambient, function(e, i){
-					data.push(e);
-				});
-			}
-			// encode end of data
-			data.push(0xff, 0x0a);
-			encoded = encode.array(data);
-			response.writeHead(200, {});
-			response.write(encoded, 'binary');
-			response.end();
+			// Get from database
+			db.rabbits.findOne({sn: get.sn}, function(err, doc){
+				if(!err){
+					// build up an ambient block
+					if(doc && doc.action && doc.action == 'ambient' && doc.number){
+						encode.set_ambient(ambient, 1, doc.number);
+						isAmbient = 1;
+					}
+					// Dont blink if cleared
+					if(doc && doc.action && doc.action == 'clear'){
+						encode.clear_ambient(ambient, 1);
+						isAmbient = 1;
+					}
+					if(isAmbient){
+						data.push(4);
+						encode.length(data, ambient.length + 4);
+						data.push(0, 0, 0, 0);
+						[].forEach.call(ambient, function(e, i){
+							data.push(e);
+						});
+					}
+					db.rabbits.remove({sn: get.sn});
+				}
+				// encode end of data
+				data.push(0xff, 0x0a);
+				encoded = encode.array(data);
+				response.writeHead(200, {});
+				response.write(encoded, 'binary');
+				response.end();
+			});
 		break;
 		case 'locate':
 			response.writeHead(200, {});
@@ -148,18 +155,38 @@ server.http.start = function(){
 					response.end();
 				return;
 				case '/ambient':
-					console.log(get);
 					if(get){
+						var result = {};
 						if(get.number){
 							number = get.number;
 						}else{
 							number = Math.floor((Math.random()*18)+1);
 						}
-						request.session.number = number;
-						request.session.action = 'ambient';
+						if(get.sn){
+							sn = get.sn;
+						}else{
+							sn = '01234abcd';
+						}
+						result.number = number;
+						result.action = 'ambient';
+						result.sn = sn;
+						db.rabbits.save(result);
 					}
 					response.writeHead(200, {});
 					response.end('Changed!');
+				break;
+				case '/clear':
+					var result = {};
+					if(get && get.sn){
+						sn = get.sn;
+					}else{
+						sn = '01234abcd';
+					}
+					result.action = 'clear';
+					result.sn = sn;
+					db.rabbits.save({sn:result.sn, action: result.action});
+					response.writeHead(200, {});
+					response.end('Cleared!');
 				break;
 				default: 
 					/* 
