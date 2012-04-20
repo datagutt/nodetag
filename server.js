@@ -9,9 +9,9 @@ fs = require('fs'),
 mime = require('mime'),
 session = require('sesh').session,
 encode = require('./encode.js').encode;
-var server = {}, config = {};
-// default config
-config = {
+var server = {}, config = require('./config.local.js');
+// If config exists, use it, else use default.
+config = config || {
 	server: {
 		host: '192.168.0.8',
 		port: 8080
