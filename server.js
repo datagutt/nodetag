@@ -76,6 +76,7 @@ server.http.handleJSP = function(uri, get, request, response){
 			server.http.getBootcode(response);
 		break;
 		case 'p4':
+			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
 			// Get from database
 			db.rabbits.findOne({sn: get.sn}, function(err, doc){
 				var ambient = [], isAmbient = 0;
@@ -86,8 +87,8 @@ server.http.handleJSP = function(uri, get, request, response){
 				data.push(0x03, 0x00, 0x00, 0x01, 10);
 				if(!err){
 					// build up an ambient block
-					if(doc && doc.action && doc.action == 'ambient' && doc.number){
-						encode.set_ambient(ambient, 1, parseInt(doc.number, 10));
+					if(doc && doc.action && doc.action == 'ambient' && doc.color){
+						encode.set_ambient(ambient, 1, parseInt(doc.color, 10));
 						isAmbient = 1;
 					}
 					// Dont blink if cleared
@@ -107,11 +108,12 @@ server.http.handleJSP = function(uri, get, request, response){
 				// encode end of data
 				data.push(0xff, 0x0a);
 				encoded = encode.array(data);
+				console.log(data);
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');
 				response.end();
-				//db.rabbits.remove({sn: get.sn});
 			});
+			db.rabbits.remove({sn: get.sn});
 		break;
 		case 'locate':
 			response.writeHead(200, {});
@@ -143,7 +145,7 @@ server.http.start = function(){
 					body += data;
 				});
 				request.on('end', function () {
-					post = qs.parse(body);
+					post = body;
 				});
  	   		}
 			switch(uri){
@@ -157,17 +159,17 @@ server.http.start = function(){
 				case '/ambient':
 					if(get){
 						var result = {};
-						if(get.number){
-							number = get.number;
+						if(get.color){
+							color = get.color;
 						}else{
-							number = Math.floor((Math.random()*18)+1);
+							color = Math.floor((Math.random()*18)+1);
 						}
 						if(get.sn){
 							sn = get.sn;
 						}else{
 							sn = '01234abcd';
 						}
-						result.number = number;
+						result.color = color;
 						result.action = 'ambient';
 						result.sn = sn;
 						db.rabbits.save(result);
@@ -184,7 +186,7 @@ server.http.start = function(){
 					}
 					result.action = 'clear';
 					result.sn = sn;
-					db.rabbits.save({sn:result.sn, action: result.action});
+					db.rabbits.save(result);
 					response.writeHead(200, {});
 					response.end('Cleared!');
 				break;
