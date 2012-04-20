@@ -11,19 +11,19 @@ encode.length = function(a, length) {
 	return a.push(length >> 16, (length >> 8) & 0xff, length & 0xff);
 }
 encode.clear_ambient = function(a, type) {
-	return a.push(a, 0, type);
+	return a.push(0, type);
 }
 encode.set_ambient = function(a, type, value) {
-	return a.push(a, type, value);
+	return a.push(type, value);
 }
 encode.left_ear = function (a, pos) {
-	return a.push(a, 4, $os);
+	return a.push(4, pos);
 }
 encode.right_ear = function(a, pos) {
-   return a.push(a, 5, pos);
+   return a.push(5, pos);
 }
 encode.clear_positions = function(a, left, right) {
-	return a.push(a, 4, left, 5, right);
+	return a.push(4, left, 5, right);
 }
 encode.pack = function(format) {
     // http://kevin.vanzonneveld.net

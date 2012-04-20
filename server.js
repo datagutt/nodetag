@@ -76,18 +76,18 @@ server.http.handleJSP = function(uri, get, request, response){
 			server.http.getBootcode(response);
 		break;
 		case 'p4':
-			var ambient = [], isAmbient;
-			// Handle ping
-			console.log('[PINGED]');
-			var data = [0x7f];
-			// encode ping interval block
-			data.push(0x03, 0x00, 0x00, 0x01, 10);
 			// Get from database
 			db.rabbits.findOne({sn: get.sn}, function(err, doc){
+				var ambient = [], isAmbient = 0;
+				// Handle ping
+				console.log('[PINGED]');
+				var data = [0x7f];
+				// encode ping interval block
+				data.push(0x03, 0x00, 0x00, 0x01, 10);
 				if(!err){
 					// build up an ambient block
 					if(doc && doc.action && doc.action == 'ambient' && doc.number){
-						encode.set_ambient(ambient, 1, doc.number);
+						encode.set_ambient(ambient, 1, parseInt(doc.number, 10));
 						isAmbient = 1;
 					}
 					// Dont blink if cleared
@@ -103,7 +103,6 @@ server.http.handleJSP = function(uri, get, request, response){
 							data.push(e);
 						});
 					}
-					db.rabbits.remove({sn: get.sn});
 				}
 				// encode end of data
 				data.push(0xff, 0x0a);
@@ -111,6 +110,7 @@ server.http.handleJSP = function(uri, get, request, response){
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');
 				response.end();
+				//db.rabbits.remove({sn: get.sn});
 			});
 		break;
 		case 'locate':
