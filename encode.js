@@ -1,5 +1,6 @@
-/* Encode functions, based on https://github.com/dparnell/nabaztag-php/, but translated to javascript by datagutt. */
+/* Encode functions, some are based on https://github.com/dparnell/nabaztag-php/, but translated to javascript by datagutt. */
 var encode = {};
+var crypto = require('crypto');
 encode.array = function(a) {
 	var result = '';
 	[].forEach.call(a, function(e, i){
@@ -24,6 +25,9 @@ encode.right_ear = function(a, pos) {
 }
 encode.clear_positions = function(a, left, right) {
 	return a.push(4, left, 5, right);
+}
+encode.hash_password = function(salt, password){
+	return crypto.createHmac('sha1', salt).update(password).digest('hex');
 }
 encode.pack = function(format) {
     // http://kevin.vanzonneveld.net
