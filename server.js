@@ -20,7 +20,7 @@ config = config || {
 		database : 'nodetag'
 	}
 }
-var db = require('mongojs').connect(config.db.database, ['rabbits']);
+var db = require('mongojs').connect(config.db.database, ['rabbits', 'users', 'actions']);
 server.http = {};
 server.http.loadFile = function(uri, response){
 	var filename = './public/' + uri;
@@ -70,15 +70,91 @@ server.http.getBootcode = function(response){
 		});
 	});
 }
-server.http.handleJSP = function(uri, get, request, response){
+server.http.handleURI = function(response, uri, realuri, get, post, isJSP){
+console.log(get);
+	switch(uri){
+		case '/':
+			server.http.loadFile('index.html', response);
+		return;
+		case '/vl':
+		case '/api':
+			response.writeHead(200, {});
+			response.end('Huh?');
+		return;
+		case '/api/ambient':
+			if(get){
+				var result = {};
+				if(get.color){
+					color = get.color;
+				}else{
+					color = Math.floor((Math.random()*18)+1);
+				}
+				if(get.sn){
+					sn = get.sn;
+				}else{
+					sn = '01234abcd';
+				}
+				result.color = color;
+				result.action = 'ambient';
+				result.sn = sn;
+				db.actions.save(result);
+			}
+			response.writeHead(200, {});
+			response.end('Changed!');
+		break;
+		case '/api/clear':
+			var result = {};
+			if(get && get.sn){
+				sn = get.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.action = 'clear';
+			result.sn = sn;
+			db.actions.save(result);
+			response.writeHead(200, {});
+			response.end('Cleared!');
+		break;
+		case 'login':
+		break;
+		case 'register':
+		break;
+		default: 
+			/* 
+				If it ends with .jsp, use handleJSP, else show 404.
+			*/
+			// TODO: Use regex
+			isJSP && console.log('[JSP] ' + uri);
+			if(realuri && server.http.handleJSP(realuri, get, post, response)){
+			}else{
+				console.log('[404] ' + uri);
+				response.writeHead(404, {'Content-Type': 'text/plain'});
+				response.end('404 Not Found\n');
+			}
+		break;
+	}
+	!isJSP && console.log('[URI] ' + uri);
+}
+server.http.handleJSP = function(uri, get, post, response){
 	switch(uri){
 		case 'bc':
 			server.http.getBootcode(response);
 		break;
+		case 'record':
+			fs.writeFile("./media/"+get.sn+"-audio.wav", post, function(err) {
+				if(err){
+					throw err;
+				}else{
+					console.log("The file was saved!");
+				}
+			}); 
+			response.writeHead(200, {});
+			response.end();
+		break;
 		case 'p4':
 			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
 			// Get from database
-			db.rabbits.findOne({sn: get.sn}, function(err, doc){
+			db.actions.findOne({sn: get.sn}, function(err, doc){
 				var ambient = [], isAmbient = 0;
 				// Handle ping
 				console.log('[PINGED]');
@@ -108,12 +184,11 @@ server.http.handleJSP = function(uri, get, request, response){
 				// encode end of data
 				data.push(0xff, 0x0a);
 				encoded = encode.array(data);
-				console.log(data);
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');
 				response.end();
 			});
-			db.rabbits.remove({sn: get.sn});
+			db.actions.remove({sn: get.sn});
 		break;
 		case 'locate':
 			response.writeHead(200, {});
@@ -133,12 +208,10 @@ server.http.start = function(){
 			var parsed = url.parse(request.url, true);
 			var uri = parsed.pathname;
 			var get = parsed.query;
-			// Replace the /vl, so people dont need that at end
-			uri = uri.replace('/vl/', '/');
 			console.log(request.url);
-			var isJSP = uri.match('.jsp') ? !!uri.match('.jsp')[0] : false;
+			var isJSP = uri.match('.jsp') ? !!uri.match('.jsp')[0] : false;					var realuri = isJSP ? uri.replace('.jsp', '').replace('/vl/', '') : '';
 			var get;
-			// add post data to variable named post if there is any
+			// HandleURI, if its post, wait for post data to end
 			if (request.method == 'POST') {
 				var body = '';
 				request.on('data', function (data) {
@@ -146,67 +219,11 @@ server.http.start = function(){
 				});
 				request.on('end', function () {
 					post = body;
+					server.http.handleURI(response, uri, realuri, get, post, isJSP);
 				});
+ 	   		}else{
+				server.http.handleURI(response, uri, realuri, get, false, isJSP);
  	   		}
-			switch(uri){
-				case '/':
-					server.http.loadFile('index.html', response);
-				return;
-				case '/vl':
-					response.writeHead(200, {});
-					response.end();
-				return;
-				case '/ambient':
-					if(get){
-						var result = {};
-						if(get.color){
-							color = get.color;
-						}else{
-							color = Math.floor((Math.random()*18)+1);
-						}
-						if(get.sn){
-							sn = get.sn;
-						}else{
-							sn = '01234abcd';
-						}
-						result.color = color;
-						result.action = 'ambient';
-						result.sn = sn;
-						db.rabbits.save(result);
-					}
-					response.writeHead(200, {});
-					response.end('Changed!');
-				break;
-				case '/clear':
-					var result = {};
-					if(get && get.sn){
-						sn = get.sn;
-					}else{
-						sn = '01234abcd';
-					}
-					result.action = 'clear';
-					result.sn = sn;
-					db.rabbits.save(result);
-					response.writeHead(200, {});
-					response.end('Cleared!');
-				break;
-				default: 
-					/* 
-						If it ends with .jsp, do more processing. 
-						If it doesnt, return 404.
-					*/
-					// TODO: Use regex
-					var realuri = isJSP ? uri.replace('.jsp', '').replace('/', '') : '';
-					isJSP && console.log('[JSP] ' + uri);
-					if(realuri && server.http.handleJSP(realuri, get, request, response)){
-					}else{
-						console.log('[404] ' + uri);
-						response.writeHead(404, {'Content-Type': 'text/plain'});
-						response.end('404 Not Found\n');
-					}
-				break;
-			}
-			!isJSP && console.log('[URI] ' + uri);
 		});
 	}).listen(config.server.port, config.server.host);
 }

@@ -1,11 +1,11 @@
 /* Encode functions, based on https://github.com/dparnell/nabaztag-php/, but translated to javascript by datagutt. */
 var encode = {};
 encode.array = function(a) {
-  var result = '';
-  [].forEach.call(a, function(e, i){
+	var result = '';
+	[].forEach.call(a, function(e, i){
 		result += encode.pack('C', e);
-  });
-  return result;
+	});
+	return result;
 }
 encode.length = function(a, length) {
 	return a.push(length >> 16, (length >> 8) & 0xff, length & 0xff);
@@ -20,7 +20,7 @@ encode.left_ear = function (a, pos) {
 	return a.push(4, pos);
 }
 encode.right_ear = function(a, pos) {
-   return a.push(5, pos);
+	return a.push(5, pos);
 }
 encode.clear_positions = function(a, left, right) {
 	return a.push(4, left, 5, right);
