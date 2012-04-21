@@ -12,24 +12,19 @@ encode = require('./encode.js').encode;
 var server = {};
 var db = require('mongojs');
 server.http = {};
-server.http.loadFile = function(uri, response){
+server.http.loadFile = function(uri, response, func){
 	var filename = './public/' + uri;
 	fs.exists(filename, function(exists) {
 		if(!exists) {
-			response.writeHeader(404, {'Content-Type': 'text/plain'});
-			response.write('404 Not Found\n');
-			console.log('[404] ' + uri);
-			response.end();
 			return;
 		}
 		fs.readFile(filename, 'binary', function(err, file) {
 			if(err) {
 				response.writeHead(500, {'Content-Type': 'text/plain'});
 				response.end(err + '\n');
- 				return;
+			}else{
+				func(file);
 			}
-			response.writeHead(200, {});
-			response.end(file, 'binary');
 		});
 	});
 }
@@ -60,19 +55,38 @@ server.http.getBootcode = function(response){
 		});
 	});
 }
-server.http.handleURI = function(response, uri, realuri, get, post, isJSP){
+server.http.handleURI = function(request, response, uri, realuri, get, post, isJSP){
 	switch(uri){
 		case '/':
-			server.http.loadFile('index.html', response);
+			var file = server.http.loadFile('index.html', response, function(file){
+				if((request.session && request.session.user) || get.loggedin){
+					filename = 'loggedin.html';
+				}else{
+					filename = 'loggedout.html';
+				}
+				server.http.loadFile(filename, response, function(content){
+					file = file.replace('{CONTENT}', content);
+					response.writeHead(200, {});
+					response.end(file, 'binary');
+				});
+			});
 		break;
+		/* TODO: Handle resources better */
+		case '/css/reset.css':
+		case '/css/text.css':
 		case '/css/site.css':
-			server.http.loadFile('/css/site.css', response);
-		break;
 		case '/js/N1.min.js':
-			server.http.loadFile('/js/N1.min.js', response);
-		break;
 		case '/js/site.js':
-			server.http.loadFile('/js/site.js', response);
+			var file = server.http.loadFile(uri, response, function(file){
+				if(!file) {
+					response.writeHeader(404, {'Content-Type': 'text/plain'});
+					response.write('/* 404 Not Found */\n');
+					console.log('[404] ' + uri);
+					response.end();
+				}
+				response.writeHead(200, {});
+				response.end(file, 'binary');
+			});
 		break;
 		case '/vl':
 		case '/api':
@@ -128,6 +142,7 @@ server.http.handleURI = function(response, uri, realuri, get, post, isJSP){
 				console.log('[404] ' + uri);
 				response.writeHead(404, {'Content-Type': 'text/plain'});
 				response.end('404 Not Found\n');
+				return;
 			}
 		break;
 	}
@@ -206,7 +221,7 @@ server.http.start = function(config){
 			var parsed = url.parse(request.url, true);
 			var uri = parsed.pathname;
 			var get = parsed.query;
-			console.log(request.url);
+			//console.log(request.url);
 			var isJSP = uri.match('.jsp') ? !!uri.match('.jsp')[0] : false;					var realuri = isJSP ? uri.replace('.jsp', '').replace('/vl/', '') : '';
 			var get;
 			// HandleURI, if its post, wait for post data to end
@@ -217,10 +232,10 @@ server.http.start = function(config){
 				});
 				request.on('end', function () {
 					post = body;
-					server.http.handleURI(response, uri, realuri, get, post, isJSP);
+					server.http.handleURI(request, response, uri, realuri, get, post, isJSP);
 				});
  	   		}else{
-				server.http.handleURI(response, uri, realuri, get, false, isJSP);
+				server.http.handleURI(request, response, uri, realuri, get, false, isJSP);
  	   		}
 		});
 	}).listen(config.server.port, config.server.host);
