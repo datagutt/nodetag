@@ -9,18 +9,8 @@ fs = require('fs'),
 mime = require('mime'),
 session = require('sesh').session,
 encode = require('./encode.js').encode;
-var server = {}, config = require('./config.local.js');
-// If config exists, use it, else use default.
-config = config || {
-	server: {
-		host: '192.168.0.8',
-		port: 8080
-	},
-	db: {
-		database : 'nodetag'
-	}
-}
-var db = require('mongojs').connect(config.db.database, ['rabbits', 'users', 'actions']);
+var server = {};
+var db = require('mongojs');
 server.http = {};
 server.http.loadFile = function(uri, response){
 	var filename = './public/' + uri;
@@ -71,11 +61,19 @@ server.http.getBootcode = function(response){
 	});
 }
 server.http.handleURI = function(response, uri, realuri, get, post, isJSP){
-console.log(get);
 	switch(uri){
 		case '/':
 			server.http.loadFile('index.html', response);
-		return;
+		break;
+		case '/css/site.css':
+			server.http.loadFile('/css/site.css', response);
+		break;
+		case '/js/N1.min.js':
+			server.http.loadFile('/js/N1.min.js', response);
+		break;
+		case '/js/site.js':
+			server.http.loadFile('/js/site.js', response);
+		break;
 		case '/vl':
 		case '/api':
 			response.writeHead(200, {});
@@ -202,7 +200,7 @@ server.http.handleJSP = function(uri, get, post, response){
 	}
 	return true;
 }
-server.http.start = function(){
+server.http.start = function(config){
 	http.createServer(function(request, response) {
 		session(request, response, function(request, response){
 			var parsed = url.parse(request.url, true);
@@ -227,8 +225,20 @@ server.http.start = function(){
 		});
 	}).listen(config.server.port, config.server.host);
 }
-server.start = function(){
-	server.http.start();
+server.start = function(config){
+	// If config exists, use it, else use default.
+	config = config || {
+		server: {
+			host: '192.168.0.8',
+			port: 80
+		},
+		db: {
+			database : 'nodetag'
+		}
+	}
+	// Connect to db
+	db = db.connect(config.db.database, ['rabbits', 'users', 'actions']);
+	console.log('nodetag started on ' + config.server.host + ':' + config.server.port);
+	server.http.start(config);
 }
-console.log('nodetag started on ' + config.server.host + ':' + config.server.port);
 exports.server = server;

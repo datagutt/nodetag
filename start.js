@@ -1,2 +1,3 @@
 var server = require("./server.js").server;
-server.start();
+var config = require('./config.local.js');
+server.start(config);
