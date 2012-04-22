@@ -365,7 +365,7 @@ server.http.handleJSP = function(uri, get, post, response, config){
 			server.http.getBootcode(response);
 		break;
 		case 'record':
-			fs.writeFile("./media/"+get.sn+"-audio.wav", post, function(err) {
+			fs.writeFile("./media/"+get.sn+"-audio.wav", post[0], function(err) {
 				if(err){
 					throw err;
 				}else{
