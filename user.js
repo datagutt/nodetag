@@ -17,7 +17,7 @@ User.prototype.login = function(username, password, func){
 				user = {
 					username: doc.username,
 					email: doc.email,
-					rabbits: {}
+					rabbits: doc.rabbits
 				};
 			}
 		}

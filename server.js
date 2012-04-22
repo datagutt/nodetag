@@ -112,7 +112,67 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 		case '/api':
 			response.writeHead(200, {});
 			response.end('Huh?');
-		return;
+		break;
+		case '/rabbit':
+			if(get && get.sn){
+				sn = get.sn;
+				var file = server.http.loadFile('index.html', response, function(file){
+				var isLoggedIn = function(){return request.session && request.session.user;};
+				response.writeHead(200, {});
+				if(isLoggedIn()){
+					loggedinFunc = function(response, content){
+						content = content.replace(/({SN})/ig, sn);
+						response.writeHead(200, {});
+						response.end(content, 'binary');
+					};
+					server.http.loadFile('rabbit.html', response, function(content){
+						file = file.replace('{CONTENT}', content);
+						if(typeof loggedinFunc !== 'undefined'){
+							loggedinFunc(response, file);
+						}else{
+							response.end(file, 'binary');
+						}
+					});
+				}else{
+					response.end();
+				}
+			});
+			}else{
+				response.writeHead(302, {'Location' : '/rabbits'});
+				response.end();
+			}
+		break;
+		case '/rabbits':
+			var file = server.http.loadFile('index.html', response, function(file){
+				var isLoggedIn = function(){return request.session && request.session.user;};
+				if(isLoggedIn()){
+					server.http.loadFile('rabbits.html', response, function(content){
+						file = file.replace('{CONTENT}', content);
+						if(typeof loggedinFunc !== 'undefined'){
+							loggedinFunc(response, file);
+						}else{
+							response.writeHead(200, {});
+							response.end(file, 'binary');
+						}
+					});
+					loggedinFunc = function(response, content){
+						if(isLoggedIn() && request.session.user.rabbits){
+							session_rabbits = request.session.user.rabbits;
+							var out = '', o = session_rabbits;
+							for (var p in o) {
+								out += '<li><a href="/rabbit?sn=' + o[p]['sn'] + ' "> ' + o[p]['name'] + '</a> - ' + o[p]['sn'] + '</li>';
+							}
+							content = content.replace('{RABBITS}', out);
+						}
+						response.writeHead(200, {});
+						response.end(content, 'binary');
+					};
+				}else{
+					response.writeHead(200, {});
+					response.end('You are not logged in!');
+				}
+			});
+		break;
 		case '/addBunny':
 			var result = {};
 			response.writeHead(200, {});
@@ -120,20 +180,23 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 				response.end('Your not logged in!');
 				return;
 			}
-			if(get.name){
-				name = get.name;
+			if(!post){
+				response.end('No values sent!');
+				return;
+			}
+			if(post.name){
+				name = post.name;
 			}else{
 				name = 'noname';
 			}
-			if(get.sn){
-				sn = get.sn;
+			if(post.sn){
+				sn = post.sn;
 			}else{
 				sn = '01234abcd';
 			}
 			result.name = name;
 			result.sn = sn;
-			request.session.user.rabbits = rabbits = {};
-			request.session.user.rabbits = rabbits = result;
+			request.session.user.rabbits = rabbits = {0: result};
 			var user = db.users.findOne({username: request.session.user.username}, function(err, doc){
 				if(doc){
 					doc.rabbits = rabbits;					db.users.update({username: request.session.user.username}, doc, true);
@@ -143,28 +206,69 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 		break;
 		case '/api/ambient':
 			response.writeHead(200, {});
-			if(get){
+			if(post){
 				var result = {};
 				if(!request.session || !request.session.user){
 					response.end('Your not logged in!');
 					return;
 				}
-				if(request.session && request.session.user && request.session.user.rabbits && get.sn && request.session.user.rabbits.sn !== get.sn){
+				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
 					response.end('This is not your rabbit!');
 					return;
 				}
-				if(get.color){
-					color = get.color;
+				if(post.type){
+					type = post.type;
+				}else{
+					type = 0;
+				}
+				if(post.color){
+					color = post.color;
 				}else{
 					color = Math.floor((Math.random()*18)+1);
 				}
-				if(get.sn){
-					sn = get.sn;
+				if(post.sn){
+					sn = post.sn;
 				}else{
 					sn = '01234abcd';
 				}
 				result.color = color;
 				result.action = 'ambient';
+				result.type = type;
+				result.sn = sn;
+				db.actions.save(result);
+			}
+			response.end('Changed!');
+		break;
+		case '/api/ears':
+			response.writeHead(200, {});
+			if(post){
+				var result = {};
+				if(!request.session || !request.session.user){
+					response.end('Your not logged in!');
+					return;
+				}
+				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
+					response.end('This is not your rabbit!');
+					return;
+				}
+				if(post.left){
+					left = post.left;
+				}else{
+					left = 0;
+				}
+				if(post.right){
+					right = post.right;
+				}else{
+					right = 0;
+				}
+				if(post.sn){
+					sn = post.sn;
+				}else{
+					sn = '01234abcd';
+				}
+				result.left = left;
+				result.right = right;
+				result.action = 'ears';
 				result.sn = sn;
 				db.actions.save(result);
 			}
@@ -172,23 +276,23 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 		break;
 		case '/api/clear':
 			var result = {};
+			response.writeHead(200, {});
 			if(!request.session || !request.session.user){
 				response.end('Your not logged in!');
 				return;
 			}
-			if(request.session && request.session.user && request.session.user.rabbits[0] && request.session.user.rabbits[0].sn !== get.sn){
+			if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
 				response.end('This is not your rabbit!');
 				return;
 			}
-			if(get && get.sn){
-				sn = get.sn;
+			if(get && post.sn){
+				sn = post.sn;
 			}else{
 				sn = '01234abcd';
 			}
 			result.action = 'clear';
 			result.sn = sn;
 			db.actions.save(result);
-			response.writeHead(200, {});
 			response.end('Cleared!');
 		break;
 		case '/login':
@@ -284,7 +388,13 @@ server.http.handleJSP = function(uri, get, post, response, config){
 				if(!err){
 					// build up an ambient block
 					if(doc && doc.action && doc.action == 'ambient' && doc.color){
-						encode.set_ambient(ambient, 1, parseInt(doc.color, 10));
+						type = parseInt(doc.type, 10);
+						encode.set_ambient(ambient, type, parseInt(doc.color, 10));
+						isAmbient = 1;
+					}
+					if(doc && doc.action && doc.action == 'ears' && doc.left && doc.right){
+						encode.left_ear(ambient, doc.left);
+						encode.right_ear(ambient, doc.right);
 						isAmbient = 1;
 					}
 					// Dont blink if cleared

@@ -24,7 +24,7 @@ body {
 	text-align: left;
 }
 /* Inputs */
-input[type="text"], input[type="password"], input[type="email"] {
+input[type="text"], input[type="password"], input[type="email"], input[type="number"], select {
 	border: 1px solid #CCC;
 	color: black;
 	display: block;
