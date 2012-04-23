@@ -79,12 +79,19 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 				}
 				server.http.loadFile(filename, response, function(content){
 					file = file.replace('{CONTENT}', content);
-					if(typeof loggedinFunc !== 'undefined'){
-						loggedinFunc(response, file);
-					}else{
-						response.writeHead(200, {});
-						response.end(file, 'binary');
-					}
+					var total = 0;
+					db.users.find({ rabbits: { "$gt": {} } }, function(err, doc){
+						if(doc){
+							total = Object.keys(doc).length;
+						}
+						file = file.replace('{TOTAL}', total);
+						if(typeof loggedinFunc !== 'undefined'){
+							loggedinFunc(response, file);
+						}else{
+							response.writeHead(200, {});
+							response.end(file, 'binary');
+						}
+					});
 				});
 			});
 		break;
@@ -127,11 +134,19 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 					};
 					server.http.loadFile('rabbit.html', response, function(content){
 						file = file.replace('{CONTENT}', content);
-						if(typeof loggedinFunc !== 'undefined'){
-							loggedinFunc(response, file);
-						}else{
-							response.end(file, 'binary');
-						}
+						var total = 0;
+						db.users.find({ rabbits: { "$gt": {} } }, function(err, doc){
+							if(doc){
+								total = Object.keys(doc).length;
+							}
+							file = file.replace('{TOTAL}', total);
+							if(typeof loggedinFunc !== 'undefined'){
+								loggedinFunc(response, file);
+							}else{
+								response.writeHead(200, {});
+								response.end(file, 'binary');
+							}
+						});
 					});
 				}else{
 					response.end();
@@ -148,12 +163,19 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 				if(isLoggedIn()){
 					server.http.loadFile('rabbits.html', response, function(content){
 						file = file.replace('{CONTENT}', content);
-						if(typeof loggedinFunc !== 'undefined'){
-							loggedinFunc(response, file);
-						}else{
-							response.writeHead(200, {});
-							response.end(file, 'binary');
-						}
+						var total = 0;
+						db.users.find({ rabbits: { "$gt": {} } }, function(err, doc){
+							if(doc){
+								total = Object.keys(doc).length;
+							}
+							file = file.replace('{TOTAL}', total);
+							if(typeof loggedinFunc !== 'undefined'){
+								loggedinFunc(response, file);
+							}else{
+								response.writeHead(200, {});
+								response.end(file, 'binary');
+							}
+						});
 					});
 					loggedinFunc = function(response, content){
 						if(isLoggedIn() && request.session.user.rabbits){
@@ -197,7 +219,7 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 			result.name = name;
 			result.sn = sn;
 			request.session.user.rabbits = rabbits = {0: result};
-			var user = db.users.findOne({username: request.session.user.username}, function(err, doc){
+			db.users.findOne({username: request.session.user.username}, function(err, doc){
 				if(doc){
 					doc.rabbits = rabbits;					db.users.update({username: request.session.user.username}, doc, true);
 				}
