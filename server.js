@@ -10,10 +10,12 @@ fs = require('fs'),
 mime = require('mime'),
 session = require('sesh').session,
 encode = require('./encode.js').encode;
-User = require('./user.js').User;
+User = require('./user.js').User,
+Plugins = require('./plugins.js').Plugins;
 var server = {};
 var db = require('mongojs');
 server.http = {};
+server.isAmbient = 0;
 server.http.loadFile = function(uri, response, func){
 	var filename = './public/' + uri;
 	fs.exists(filename, function(exists) {
@@ -80,7 +82,7 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 				server.http.loadFile(filename, response, function(content){
 					file = file.replace('{CONTENT}', content);
 					var total = 0;
-					db.users.find({ rabbits: { "$gt": {} } }, function(err, doc){
+					db.users.find({ rabbits: { '$gt': {} } }, function(err, doc){
 						if(doc){
 							total = Object.keys(doc).length;
 						}
@@ -135,7 +137,7 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 					server.http.loadFile('rabbit.html', response, function(content){
 						file = file.replace('{CONTENT}', content);
 						var total = 0;
-						db.users.find({ rabbits: { "$gt": {} } }, function(err, doc){
+						db.users.find({ rabbits: { '$gt': {} } }, function(err, doc){
 							if(doc){
 								total = Object.keys(doc).length;
 							}
@@ -164,7 +166,7 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 					server.http.loadFile('rabbits.html', response, function(content){
 						file = file.replace('{CONTENT}', content);
 						var total = 0;
-						db.users.find({ rabbits: { "$gt": {} } }, function(err, doc){
+						db.users.find({ rabbits: { '$gt': {} } }, function(err, doc){
 							if(doc){
 								total = Object.keys(doc).length;
 							}
@@ -387,13 +389,14 @@ server.http.handleJSP = function(uri, get, post, response, config){
 			server.http.getBootcode(response);
 		break;
 		case 'record':
-			fs.writeFile("./media/"+get.sn+"-audio.wav", post[0], function(err) {
+			fs.writeFile('./media/'+get.sn+'-audio.wav', post[0], function(err) {
 				if(err){
 					throw err;
 				}else{
-					console.log("The file was saved!");
+					console.log('The file was saved!');
 				}
 			}); 
+			Plugins.fire('record', [ambient, data, doc]);
 			response.writeHead(200, {});
 			response.end();
 		break;
@@ -401,46 +404,30 @@ server.http.handleJSP = function(uri, get, post, response, config){
 			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
 			// Get from database
 			db.actions.findOne({sn: get.sn}, function(err, doc){
-				var ambient = [], isAmbient = 0;
+				var ambient = [];
 				// Handle ping
 				console.log('[PINGED]');
 				var data = [0x7f];
 				// encode ping interval block
 				data.push(0x03, 0x00, 0x00, 0x01, 10);
-				if(!err){
-					// build up an ambient block
-					if(doc && doc.action && doc.action == 'ambient' && doc.color){
-						type = parseInt(doc.type, 10);
-						encode.set_ambient(ambient, type, parseInt(doc.color, 10));
-						isAmbient = 1;
-					}
-					if(doc && doc.action && doc.action == 'ears' && doc.left && doc.right){
-						encode.left_ear(ambient, doc.left);
-						encode.right_ear(ambient, doc.right);
-						isAmbient = 1;
-					}
-					// Dont blink if cleared
-					if(doc && doc.action && doc.action == 'clear'){
-						encode.clear_ambient(ambient, 1);
-						isAmbient = 1;
-					}
-					if(isAmbient){
-						data.push(4);
-						encode.length(data, ambient.length + 4);
-						data.push(0, 0, 0, 0);
-						[].forEach.call(ambient, function(e, i){
-							data.push(e);
-						});
-					}
+				Plugins.fire('ping', {'data': data, 'ambient': ambient, 'doc': doc});
+				if(server.isAmbient){
+					data.push(4);
+					encode.length(data, ambient.length + 4);
+					data.push(0, 0, 0, 0);
+					[].forEach.call(ambient, function(e, i){
+						data.push(e);
+					});
 				}
 				// encode end of data
 				data.push(0xff, 0x0a);
+				console.log(data);
 				encoded = encode.array(data);
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');
 				response.end();
+				db.actions.remove({sn: get.sn});
 			});
-			db.actions.remove({sn: get.sn});
 		break;
 		case 'locate':
 			response.writeHead(200, {});
@@ -488,12 +475,21 @@ server.start = function(config){
 		},
 		db: {
 			database : 'nodetag'
+		},
+		plugins: {
+			'ambient.plugis.js': {},
+			'ears.plugin.js': {},
+			'clear.plugin.js': {}
 		}
 	}
 	// Connect to db
 	db = db.connect(config.db.database, ['rabbits', 'users', 'actions']);
 	console.log('nodetag started on ' + config.server.host + ':' + config.server.port);
+	// Init User
 	User = new User(db, encode);
 	server.http.start(config);
+	// Init plugins
+	Plugins = exports.Plugins = new Plugins(this);
+	Plugins.load(config.plugins);
 }
 exports.server = server;
