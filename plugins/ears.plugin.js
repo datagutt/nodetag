@@ -5,8 +5,9 @@ exports.init = function(plugins, server){
 		var doc = args.doc;
 		var ambient = args.ambient;
 		if(doc && doc.action && doc.action == 'ears' && doc.left && doc.right){
-			encode.left_ear(ambient, parseInt(doc.left, 10));
-			encode.right_ear(ambient, parseInt(doc.right, 10));
+			var left = parseInt(doc.left, 10);
+			var right = parseInt(doc.right, 10);
+			encode.ear_positions(ambient, left, right);
 			server.isAmbient = 1;
 		}
 	});

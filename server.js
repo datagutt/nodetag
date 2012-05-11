@@ -396,7 +396,7 @@ server.http.handleJSP = function(uri, get, post, response, config){
 					console.log('The file was saved!');
 				}
 			}); 
-			Plugins.fire('record', [ambient, data, doc]);
+			Plugins.fire('record', {'get': get, 'post': post});
 			response.writeHead(200, {});
 			response.end();
 		break;
@@ -421,7 +421,6 @@ server.http.handleJSP = function(uri, get, post, response, config){
 				}
 				// encode end of data
 				data.push(0xff, 0x0a);
-				console.log(data);
 				encoded = encode.array(data);
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');

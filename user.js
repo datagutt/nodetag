@@ -29,7 +29,8 @@ User.prototype.register = function(username, password, email, func){
 	var salt = Math.round((new Date().valueOf() * Math.random())) + '';
 	var hashed_password = self.encode.hash_password(salt, password);
 	self.db.users.findOne({username:username}, function(err, doc){
-		if(!doc){
+	console.log(err, doc);
+		if(!doc && !err){
 			self.db.users.save({
 				username: username,
 				email: email,
