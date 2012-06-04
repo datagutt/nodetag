@@ -3,16 +3,12 @@
 <h2>Ambient</h2>
 <form method="post" action="/api/ambient" target="message_iframe">
 	<select name="type">
-		<option value="1">Weather</option>
+		<option value="01">Weather</option>
+		<option value="08">Nose</option>
 	</select>
-	<input type="number" name="color" placeholder="Color" min="1" max="6" />
+	<input type="number" name="value" placeholder="Value" min="0" max="6" />
 	<input type="hidden" name="sn" value="{SN}" />
 	<input type="submit" />
-</form>
-<h2>Clear ambient</h2>
-<form method="post" action="/api/clear" target="message_iframe">
-	<input type="hidden" name="sn" value="{SN}" />
-	<input type="submit" value="Clear" />
 </form>
 <h2>Ears</h2>
 <form method="post" action="/api/ears" target="message_iframe">
@@ -20,6 +16,19 @@
 	<input type="number" name="right" placeholder="Right" min="0" max="18" />
 	<input type="hidden" name="sn" value="{SN}" />
 	<input type="submit" value="Wiggle!" />
+</form>
+<h2>Other</h2>
+<form style="display:inline;" method="post" action="/api/tts" target="message_iframe">
+	<input type="hidden" name="sn" value="{SN}" />
+	<input type="submit" value="TTS test" />
+</form>
+<form style="display:inline;" method="post" action="/api/reboot" target="message_iframe">
+	<input type="hidden" name="sn" value="{SN}" />
+	<input type="submit" value="Reboot" />
+</form>
+<form style="display:inline;" method="post" action="/api/clear" target="message_iframe">
+	<input type="hidden" name="sn" value="{SN}" />
+	<input type="submit" value="Clear" />
 </form>
 <h2>Returned message</h2>
 <iframe src="about:blank" name="message_iframe" style="border:0;width:200px;height:70px;"></iframe>

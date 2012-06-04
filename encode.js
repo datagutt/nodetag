@@ -28,32 +28,23 @@ encode.right_ear = function(a, pos) {
 encode.ear_positions = function(a, left, right) {
 	return a.push(4, left, 5, right);
 }
-encode.clear_positions = function(a, left, right) {
-	return a.push(4, left, 5, right);
-}
 encode.hash_password = function(salt, password) {
 	return crypto.createHmac('sha1', salt).update(password).digest('hex');
 }
-encode.message.send = function(a, text) {
-	if(!text){
+encode.message= function(a, message) {
+	if(!message){
 		return;
 	}
-	a.push(text);
-};
-encode.message.parse = function(text) {
-	if(!text){
-		return;
-	}
+	var code, tmp;
 	// Obfuscating algorithm by Sache
-	binary = 0x01;
-	previousChar = 35;
-	for(i=0;i<text.length;i++) {
-		currentChar = text[i].charCodeAt(0);
-		code = (invtable[previousChar % 128]*currentChar+47) % 256;
+	var previousChar = 35;
+	a.push(0x00);
+	for(var i = 0; i < message.length; i++){
+		currentChar = message.charCodeAt(i);
+		code = (invtable[previousChar % 128] * currentChar + 47) % 256;
 		previousChar = currentChar;
-		binary += String.fromCharCode(code);
-	}
-	return binary;
+		a.push(code);
+	};
 };
 /* phpjs.org */
 encode.pack = function(format) {

@@ -15,7 +15,6 @@ Plugins = require('./plugins.js').Plugins;
 var server = {};
 var db = require('mongojs');
 server.http = {};
-server.isAmbient = 0;
 server.http.loadFile = function(uri, response, func){
 	var filename = './public/' + uri;
 	fs.exists(filename, function(exists) {
@@ -105,6 +104,7 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 		case '/js/N1.min.js':
 		case '/js/site.js':
 		case '/nabaztag.png':
+		case '/mood/1.mp3':
 			var file = server.http.loadFile(uri, response, function(file){
 				if(!file) {
 					response.writeHeader(404, {});
@@ -112,7 +112,7 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 					console.log('[404] ' + uri);
 					response.end();
 				}
-				var type = mime.lookup('./public/'+uri)
+				var type = mime.lookup('./public/' + uri);
 				response.writeHead(200, {'Content-type': type});
 				response.end(file, 'binary');
 			});
@@ -245,17 +245,17 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 				}else{
 					type = 0;
 				}
-				if(post.color){
-					color = post.color;
+				if(post.value){
+					value = post.value;
 				}else{
-					color = Math.floor((Math.random()*18)+1);
+					value = Math.floor((Math.random()*18)+1);
 				}
 				if(post.sn){
 					sn = post.sn;
 				}else{
 					sn = '01234abcd';
 				}
-				result.color = color;
+				result.value = value;
 				result.action = 'ambient';
 				result.type = type;
 				result.sn = sn;
@@ -293,6 +293,52 @@ server.http.handleURI = function(request, response, uri, realuri, get, post, isJ
 				result.left = left;
 				result.right = right;
 				result.action = 'ears';
+				result.sn = sn;
+				db.actions.save(result);
+			}
+			response.end('Changed!');
+		break;
+		case '/api/reboot':
+			response.writeHead(200, {});
+			if(post){
+				var result = {};
+				if(!request.session || !request.session.user){
+					response.end('Your not logged in!');
+					return;
+				}
+				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
+					response.end('This is not your rabbit!');
+					return;
+				}
+				if(post.sn){
+					sn = post.sn;
+				}else{
+					sn = '01234abcd';
+				}
+				result.action = 'reboot';
+				result.sn = sn;
+				db.actions.save(result);
+			}
+			response.end('Changed!');
+		break;
+		case '/api/tts':
+			response.writeHead(200, {});
+			if(post){
+				var result = {};
+				if(!request.session || !request.session.user){
+					response.end('Your not logged in!');
+					return;
+				}
+				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
+					response.end('This is not your rabbit!');
+					return;
+				}
+				if(post.sn){
+					sn = post.sn;
+				}else{
+					sn = '01234abcd';
+				}
+				result.action = 'tts';
 				result.sn = sn;
 				db.actions.save(result);
 			}
@@ -411,16 +457,17 @@ server.http.handleJSP = function(uri, get, post, response, config){
 				// encode ping interval block
 				data.push(0x03, 0x00, 0x00, 0x01, 10);
 				Plugins.fire('ping', {'data': data, 'ambient': ambient, 'doc': doc});
-				if(server.isAmbient){
+				/*if(server.isAmbient){
 					data.push(4);
 					encode.length(data, ambient.length + 4);
 					data.push(0, 0, 0, 0);
 					[].forEach.call(ambient, function(e, i){
 						data.push(e);
 					});
-				}
+				}*/
 				// encode end of data
 				data.push(0xff, 0x0a);
+				console.log(data);
 				encoded = encode.array(data);
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');

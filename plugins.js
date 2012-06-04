@@ -34,7 +34,11 @@ Plugins.prototype = {
 				if(typeof hooks[plugin][event] == 'function'){
 					hooks[plugin][event].apply(self, [passedVars]);
 					if(typeof callback == 'function'){
-						callback();
+						try{
+							callback();
+						}catch(e){
+							console.log('[ERROR] ' + e);
+						}
 					}
 				}	
 			}
