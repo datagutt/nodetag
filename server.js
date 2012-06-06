@@ -457,17 +457,8 @@ server.http.handleJSP = function(uri, get, post, response, config){
 				// encode ping interval block
 				data.push(0x03, 0x00, 0x00, 0x01, 10);
 				Plugins.fire('ping', {'data': data, 'ambient': ambient, 'doc': doc});
-				/*if(server.isAmbient){
-					data.push(4);
-					encode.length(data, ambient.length + 4);
-					data.push(0, 0, 0, 0);
-					[].forEach.call(ambient, function(e, i){
-						data.push(e);
-					});
-				}*/
 				// encode end of data
 				data.push(0xff, 0x0a);
-				console.log(data);
 				encoded = encode.array(data);
 				response.writeHead(200, {});
 				response.write(encoded, 'binary');
