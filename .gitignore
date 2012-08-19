@@ -2,3 +2,4 @@
 config.local.js
 */.DS_Store
 media/
+node_modules/

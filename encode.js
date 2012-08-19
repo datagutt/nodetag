@@ -31,7 +31,7 @@ encode.ear_positions = function(a, left, right) {
 encode.hash_password = function(salt, password) {
 	return crypto.createHmac('sha1', salt).update(password).digest('hex');
 }
-encode.message= function(a, message) {
+encode.message = function(a, message) {
 	if(!message){
 		return;
 	}
