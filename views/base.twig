@@ -25,11 +25,11 @@
 				</nav>
 			</header>
 			<div id="content">
-				{CONTENT}
+				{% block content %}{% endblock %}
 			</div>
 			<div class="clear"></div>
 			<footer>
-				<p>&copy; nodetag 2012 - ?/{TOTAL} rabbits online</p>
+				<p>&copy; nodetag 2012 - ?/{{TOTAL}} rabbits online</p>
 			</footer>
 		</div>
 	</body>

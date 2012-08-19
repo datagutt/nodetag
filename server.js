@@ -3,12 +3,12 @@
 **/
 var util = require('util'),
 qs = require('querystring'),
-http = require('http'),
+express = require('express')
+app = express(),
 path = require('path'),
 url = require('url'),
 fs = require('fs'),
 mime = require('mime'),
-session = require('sesh').session,
 encode = require('./encode.js').encode;
 User = require('./user.js').User,
 Plugins = require('./plugins.js').Plugins;
@@ -479,29 +479,32 @@ server.http.handleJSP = function(uri, get, post, response, config){
 	return true;
 }
 server.http.start = function(config){
-	http.createServer(function(request, response) {
-		session(request, response, function(request, response){
-			var parsed = url.parse(request.url, true);
-			var uri = parsed.pathname;
-			var get = parsed.query;
-			//console.log(request.url);
-			var isJSP = uri.match('.jsp') ? !!uri.match('.jsp')[0] : false;					var realuri = isJSP ? uri.replace('.jsp', '').replace('/vl/', '') : '';
-			var get;
-			// HandleURI, if its post, wait for post data to end
-			if (request.method == 'POST') {
-				var body = '';
-				request.on('data', function (data) {
-					body += data;
-				});
-				request.on('end', function () {
-					post = qs.parse(body);
-					server.http.handleURI(request, response, uri, realuri, get, post, isJSP, config);
-				});
- 	   		}else{
-				server.http.handleURI(request, response, uri, realuri, get, false, isJSP, config);
- 	   		}
-		});
-	}).listen(config.server.port, config.server.host);
+	app.use(express.bodyParser());
+	app.use(express.methodOverride());
+	app.use(app.router);
+	app.get('/', function(err, request, response, next){
+	console.log(request);
+		var parsed = url.parse(request.originalUrl, true);
+		var uri = parsed.pathname;
+		var get = parsed.query;
+		//console.log(request.url);
+		var isJSP = uri.match('.jsp') ? !!uri.match('.jsp')[0] : false;				var realuri = isJSP ? uri.replace('.jsp', '').replace('/vl/', '') : '';
+		var get;
+		// HandleURI, if its post, wait for post data to end
+		if (request.method == 'POST') {
+			var body = '';
+			request.on('data', function (data) {
+				body += data;
+			});
+			request.on('end', function () {
+				post = qs.parse(body);
+				server.http.handleURI(request, response, uri, realuri, get, post, isJSP, config);
+			});
+	   	}else{
+			server.http.handleURI(request, response, uri, realuri, get, false, isJSP, config);
+	   	}
+	});
+	app.listen(config.server.port, config.server.host);
 }
 server.start = function(config){
 	// If config exists, use it, else use default.

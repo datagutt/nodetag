@@ -1,0 +1,28 @@
+{% extends "base.twig" %}
+{% block content %}
+	{% if loggedin %}
+		<h1>Welcome!</h1>
+		<p>Hello {{USERNAME}}, you own {{COUNT}} rabbits.</p>
+	{% else %}
+		<div style="margin:0 auto;text-align:center;"><img src="./nabaztag.png" /></div>
+		<div class="left">
+			<h1>Login</h1>
+			<p>Login to administrer your bunny.</p>
+			<form class="form" method="post" action="/login">
+				<input type="text" required="required" name="username" placeholder="Username..." />
+				<input type="password" required="required" name="password" placeholder="Password..." />
+				<input type="submit" value="Log in" />
+			</form>
+		</div>
+		<div class="right">
+			<h1>Register</h1>
+			<p>Connect your bunny today, and enjoy our services!</p>
+			<form class="form" method="post" action="/register">
+				<input type="text" required="required" name="username" placeholder="Username..." />
+				<input type="email" required="required" name="email" placeholder="example@example.com" />
+				<input type="password" required="required" name="password" placeholder="Password..." />
+				<input type="submit" value="Register" />
+			</form>
+		</div>
+	{% endif %}
+{% endblock %}

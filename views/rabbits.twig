@@ -1,6 +1,8 @@
+{% extends "base.twig" %}
+{% block content %}
 <h1>Rabbits</h1>
 <ul id="rabbits">
-{RABBITS}
+{{RABBITS}}
 </ul>
 <h2>Add bunny</h2>
 <p>You can currently only have one rabbit connected.</p>
@@ -9,3 +11,4 @@
 	<input type="text" name="sn" placeholder="Serial of bunny" />
 	<input type="submit" value="Add" />
 </form>
+{% endblock %}
