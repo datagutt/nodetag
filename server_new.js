@@ -111,7 +111,7 @@ server.http.start = function(config){
 				session_rabbits = req.session.user.rabbits;
 				var out = '', o = session_rabbits;
 				for (var p in o) {
-					out += '<li><a href="/rabbit?sn=' + o[p]['sn'] + ' "> ' + o[p]['name'] + '</a> - ' + o[p]['sn'] + '</li>';
+					out += '<li><a href="/rabbit/' + o[p]['sn'] + ' "> ' + o[p]['name'] + '</a> - ' + o[p]['sn'] + '</li>';
 				}
 			}
 			res.status(200);
@@ -122,6 +122,17 @@ server.http.start = function(config){
 		if(typeof loggedinFunc !== 'undefined'){
 			loggedinFunc(res);
 		}
+	});
+	app.get('/rabbit/:sn', function(req, res){
+		var isLoggedIn = function(){return req.session && req.session.user;};
+		if(!isLoggedIn()){
+			res.status(500);
+			res.end();
+			return;
+		}
+		res.render('rabbit', {
+			'SN': req.params.sn
+		});
 	});
 	app.post('/addBunny', function(req, res){
 		var result = {};
@@ -176,6 +187,144 @@ server.http.start = function(config){
 		res.end('404 Not Found\n');
 	});
 	// API
+	app.post('/api/ambient', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.type){
+				type = post.type;
+			}else{
+				type = 0;
+			}
+			if(post.value){
+				value = post.value;
+			}else{
+				value = Math.floor((Math.random()*18)+1);
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.value = value;
+			result.action = 'ambient';
+			result.type = type;
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/ears', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.left){
+				left = post.left;
+			}else{
+				left = 0;
+			}
+			if(post.right){
+				right = post.right;
+			}else{
+				right = 0;
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.left = left;
+			result.right = right;
+			result.action = 'ears';
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/reboot', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.action = 'reboot';
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/tts', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.action = 'tts';
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/clear', function(req, res){
+		var result = {};
+		var post = req.body;
+		if(!req.session || !req.session.user){
+			res.end('Your not logged in!');
+			return;
+		}
+		if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
+			res.end('This is not your rabbit!');
+			return;
+		}
+		if(get && post.sn){
+			sn = post.sn;
+		}else{
+			sn = '01234abcd';
+		}
+		result.action = 'clear';
+		result.sn = sn;
+		db.actions.save(result);
+		res.end('Cleared!');
+	});
+	// Auth
 	app.post('/login', function(req, res){
 		if(req.body && req.body.username && req.body.password){
 			User.login(req.body.username, req.body.password, function(answer){
