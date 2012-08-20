@@ -8,7 +8,6 @@ exports.init = function(plugins, server){
 		var code = 'ID 1337\n';	
 		//message.push('MU /mood/1.mp3');
 		code = 'MU http://translate.google.com/translate_tts?q=this+is+a+test';
-		
 		if(doc && doc.action && doc.action == 'tts'){
 			encode.message(msg, code);
 			data.push(10);
