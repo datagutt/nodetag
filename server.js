@@ -2,11 +2,10 @@
 	© 2012 nodetag, see LICENSE.txt for license.
 **/
 var util = require('util'),
-qs = require('querystring'),
 express = require('express')
+twig = require('twig'),
+MemoryStore = require('connect').session.MemoryStore,
 app = express(),
-path = require('path'),
-url = require('url'),
 fs = require('fs'),
 mime = require('mime'),
 encode = require('./encode.js').encode;
@@ -15,441 +14,46 @@ Plugins = require('./plugins.js').Plugins;
 var server = {};
 var db = require('mongojs');
 server.http = {};
-server.http.loadFile = function(uri, response, func){
-	var filename = './public/' + uri;
-	fs.exists(filename, function(exists) {
-		if(!exists) {
-			return;
-		}
-		fs.readFile(filename, 'binary', function(err, file) {
-			if(err) {
-				response.writeHead(500, {'Content-Type': 'text/plain'});
-				response.end(err + '\n');
-			}else{
-				func(file);
-			}
-		});
-	});
-}
-server.http.getBootcode = function(response){
+server.http.getBootcode = function(res){
 	var filename = './firmware/bootcode.bin';
 	fs.exists(filename, function(exists) {
 		if(!exists) {
-			response.writeHeader(404);
-			response.write('404 Not Found\n');
-			response.end();
+			res.send(404, '404 Not Found\n');
 			console.log('[404] Could not find bootcode!');
 			return;
 		}
 		fs.readFile(filename, 'binary', function(err, file) {
 			if(err) {
-				response.writeHead(500, {
-					'Content-Type': 'text/plain'
-				});
-				response.write(err + '\n');
-				response.end();
+				res.type('text/plain');
+				res.send(500, err + '\n');
 			}
             var type = mime.lookup(filename);
-            response.writeHead(200, {
-                'Content-Type': type
-            });
-            response.write(file, 'binary');
-            response.end();
+            res.type(type);
+            res.send(file);
 		});
 	});
 }
-server.http.handleURI = function(request, response, uri, realuri, get, post, isJSP, config){
-	switch(uri){
-		case '/':
-			var file = server.http.loadFile('index.html', response, function(file){
-				var isLoggedIn = function(){return request.session && request.session.user;};
-				if(isLoggedIn()){
-					filename = 'loggedin.html';
-					loggedinFunc = function(response, content){
-						if(isLoggedIn() && request.session.user.username){
-							content = content.replace('{USERNAME}', request.session.user.username);
-						}
-						if(isLoggedIn() && request.session.user.rabbits){
-							content = content.replace('{COUNT}', Object.keys(request.session.user.rabbits).length);
-						}
-						response.writeHead(200, {});
-						response.end(content, 'binary');
-					};
-				}else{
-					filename = 'loggedout.html';
-				}
-				server.http.loadFile(filename, response, function(content){
-					file = file.replace('{CONTENT}', content);
-					var total = 0;
-					db.users.find({ rabbits: { '$gt': {} } }, function(err, doc){
-						if(doc){
-							total = Object.keys(doc).length;
-						}
-						file = file.replace('{TOTAL}', total);
-						if(typeof loggedinFunc !== 'undefined'){
-							loggedinFunc(response, file);
-						}else{
-							response.writeHead(200, {});
-							response.end(file, 'binary');
-						}
-					});
-				});
-			});
-		break;
-		/* TODO: Handle resources better */
-		/* Maybe put a regex to detect valid file names? */
-		case '/css/reset.css':
-		case '/css/text.css':
-		case '/css/site.css':
-		case '/js/N1.min.js':
-		case '/js/site.js':
-		case '/nabaztag.png':
-		case '/mood/1.mp3':
-			var file = server.http.loadFile(uri, response, function(file){
-				if(!file) {
-					response.writeHeader(404, {});
-					response.write('/* 404 Not Found */\n');
-					console.log('[404] ' + uri);
-					response.end();
-				}
-				var type = mime.lookup('./public/' + uri);
-				response.writeHead(200, {'Content-type': type});
-				response.end(file, 'binary');
-			});
-		break;
-		case '/vl':
-		case '/api':
-			response.writeHead(200, {});
-			response.end('Huh?');
-		break;
-		case '/rabbit':
-			if(get && get.sn){
-				sn = get.sn;
-				var file = server.http.loadFile('index.html', response, function(file){
-				var isLoggedIn = function(){return request.session && request.session.user;};
-				response.writeHead(200, {});
-				if(isLoggedIn()){
-					loggedinFunc = function(response, content){
-						content = content.replace(/({SN})/ig, sn);
-						response.writeHead(200, {});
-						response.end(content, 'binary');
-					};
-					server.http.loadFile('rabbit.html', response, function(content){
-						file = file.replace('{CONTENT}', content);
-						var total = 0;
-						db.users.find({ rabbits: { '$gt': {} } }, function(err, doc){
-							if(doc){
-								total = Object.keys(doc).length;
-							}
-							file = file.replace('{TOTAL}', total);
-							if(typeof loggedinFunc !== 'undefined'){
-								loggedinFunc(response, file);
-							}else{
-								response.writeHead(200, {});
-								response.end(file, 'binary');
-							}
-						});
-					});
-				}else{
-					response.end();
-				}
-			});
-			}else{
-				response.writeHead(302, {'Location' : '/rabbits'});
-				response.end();
-			}
-		break;
-		case '/rabbits':
-			var file = server.http.loadFile('index.html', response, function(file){
-				var isLoggedIn = function(){return request.session && request.session.user;};
-				if(isLoggedIn()){
-					server.http.loadFile('rabbits.html', response, function(content){
-						file = file.replace('{CONTENT}', content);
-						var total = 0;
-						db.users.find({ rabbits: { '$gt': {} } }, function(err, doc){
-							if(doc){
-								total = Object.keys(doc).length;
-							}
-							file = file.replace('{TOTAL}', total);
-							if(typeof loggedinFunc !== 'undefined'){
-								loggedinFunc(response, file);
-							}else{
-								response.writeHead(200, {});
-								response.end(file, 'binary');
-							}
-						});
-					});
-					loggedinFunc = function(response, content){
-						if(isLoggedIn() && request.session.user.rabbits){
-							session_rabbits = request.session.user.rabbits;
-							var out = '', o = session_rabbits;
-							for (var p in o) {
-								out += '<li><a href="/rabbit?sn=' + o[p]['sn'] + ' "> ' + o[p]['name'] + '</a> - ' + o[p]['sn'] + '</li>';
-							}
-							content = content.replace('{RABBITS}', out);
-						}
-						response.writeHead(200, {});
-						response.end(content, 'binary');
-					};
-				}else{
-					response.writeHead(200, {});
-					response.end('You are not logged in!');
-				}
-			});
-		break;
-		case '/addBunny':
-			var result = {};
-			response.writeHead(200, {});
-			if(!request.session || !request.session.user){
-				response.end('Your not logged in!');
-				return;
-			}
-			if(!post){
-				response.end('No values sent!');
-				return;
-			}
-			if(post.name){
-				name = post.name;
-			}else{
-				name = 'noname';
-			}
-			if(post.sn){
-				sn = post.sn;
-			}else{
-				sn = '01234abcd';
-			}
-			result.name = name;
-			result.sn = sn;
-			request.session.user.rabbits = rabbits = {0: result};
-			db.users.findOne({username: request.session.user.username}, function(err, doc){
-				if(doc){
-					doc.rabbits = rabbits;					db.users.update({username: request.session.user.username}, doc, true);
-				}
-			});
-			response.end('Updated!');
-		break;
-		case '/api/ambient':
-			response.writeHead(200, {});
-			if(post){
-				var result = {};
-				if(!request.session || !request.session.user){
-					response.end('Your not logged in!');
-					return;
-				}
-				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
-					response.end('This is not your rabbit!');
-					return;
-				}
-				if(post.type){
-					type = post.type;
-				}else{
-					type = 0;
-				}
-				if(post.value){
-					value = post.value;
-				}else{
-					value = Math.floor((Math.random()*18)+1);
-				}
-				if(post.sn){
-					sn = post.sn;
-				}else{
-					sn = '01234abcd';
-				}
-				result.value = value;
-				result.action = 'ambient';
-				result.type = type;
-				result.sn = sn;
-				db.actions.save(result);
-			}
-			response.end('Changed!');
-		break;
-		case '/api/ears':
-			response.writeHead(200, {});
-			if(post){
-				var result = {};
-				if(!request.session || !request.session.user){
-					response.end('Your not logged in!');
-					return;
-				}
-				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
-					response.end('This is not your rabbit!');
-					return;
-				}
-				if(post.left){
-					left = post.left;
-				}else{
-					left = 0;
-				}
-				if(post.right){
-					right = post.right;
-				}else{
-					right = 0;
-				}
-				if(post.sn){
-					sn = post.sn;
-				}else{
-					sn = '01234abcd';
-				}
-				result.left = left;
-				result.right = right;
-				result.action = 'ears';
-				result.sn = sn;
-				db.actions.save(result);
-			}
-			response.end('Changed!');
-		break;
-		case '/api/reboot':
-			response.writeHead(200, {});
-			if(post){
-				var result = {};
-				if(!request.session || !request.session.user){
-					response.end('Your not logged in!');
-					return;
-				}
-				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
-					response.end('This is not your rabbit!');
-					return;
-				}
-				if(post.sn){
-					sn = post.sn;
-				}else{
-					sn = '01234abcd';
-				}
-				result.action = 'reboot';
-				result.sn = sn;
-				db.actions.save(result);
-			}
-			response.end('Changed!');
-		break;
-		case '/api/tts':
-			response.writeHead(200, {});
-			if(post){
-				var result = {};
-				if(!request.session || !request.session.user){
-					response.end('Your not logged in!');
-					return;
-				}
-				if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
-					response.end('This is not your rabbit!');
-					return;
-				}
-				if(post.sn){
-					sn = post.sn;
-				}else{
-					sn = '01234abcd';
-				}
-				result.action = 'tts';
-				result.sn = sn;
-				db.actions.save(result);
-			}
-			response.end('Changed!');
-		break;
-		case '/api/clear':
-			var result = {};
-			response.writeHead(200, {});
-			if(!request.session || !request.session.user){
-				response.end('Your not logged in!');
-				return;
-			}
-			if(request.session && request.session.user && request.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
-				response.end('This is not your rabbit!');
-				return;
-			}
-			if(get && post.sn){
-				sn = post.sn;
-			}else{
-				sn = '01234abcd';
-			}
-			result.action = 'clear';
-			result.sn = sn;
-			db.actions.save(result);
-			response.end('Cleared!');
-		break;
-		case '/login':
-			response.writeHead(200, {});
-			if(post && post.username && post.password){
-				User.login(post.username, post.password, function(answer){
-					if(answer){
-						request.session.user = answer;
-						response.writeHead(302, {
-							'Location': '/'
-						});
-						response.end();
-					}else{
-						response.end('Wrong username or password.');
-					}
-				});
-			}else{
-				response.end('Please fill out all fields.\n');
-			}
-		break;
-		case '/logout':
-			if(request.session && request.session.user){
-				delete request.session.user;
-				response.writeHead(302, {
-					'Location': '/'
-				});
-			}else{
-				response.writeHead(500, {});
-			}
-			response.end();
-		break;
-		case '/register':
-			response.writeHead(200, {'Content-Type': 'text/plain'});
-			if(post && post.username && post.password && post.email){
-				User.register(post.username, post.password, post.email, function(answer){
-					if(answer){
-						request.session.user = answer;
-						response.writeHead(302, {
-							'Location': '/'
-						});
-						response.end();
-					}else{
-						response.end('User already exists!');
-					}
-				});
-			}else{
-				response.end('Please fill out all fields.\n');
-			}
-		break;
-		default: 
-			/* 
-				If it ends with .jsp, use handleJSP, else show 404.
-			*/
-			// TODO: Use regex
-			isJSP && console.log('[JSP] ' + uri);
-			if(realuri && server.http.handleJSP(realuri, get, post, response, config)){
-			}else{
-				console.log('[404] ' + uri);
-				response.writeHead(404, {'Content-Type': 'text/plain'});
-				response.end('404 Not Found\n');
-				return;
-			}
-		break;
-	}
-	!isJSP && console.log('[URI] ' + uri);
-}
-server.http.handleJSP = function(uri, get, post, response, config){
-	switch(uri){
+server.http.handleJSP = function(route, params, res, config){
+	switch(route){
 		case 'bc':
-			server.http.getBootcode(response);
+			server.http.getBootcode(res);
 		break;
 		case 'record':
-			fs.writeFile('./media/'+get.sn+'-audio.wav', post[0], function(err) {
+			// FIXTHIS
+			var post = [];
+			fs.writeFile('./media/'+params.sn+'-audio.wav', post[0], function(err) {
 				if(err){
 					throw err;
 				}else{
 					console.log('The file was saved!');
 				}
 			}); 
-			Plugins.fire('record', {'get': get, 'post': post});
-			response.writeHead(200, {});
-			response.end();
+			Plugins.fire('record', {'get': params, 'post': post});
 		break;
 		case 'p4':
 			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
 			// Get from database
-			db.actions.findOne({sn: get.sn}, function(err, doc){
+			db.actions.findOne({sn: params.sn}, function(err, doc){
 				var ambient = [];
 				// Handle ping
 				console.log('[PINGED]');
@@ -460,49 +64,299 @@ server.http.handleJSP = function(uri, get, post, response, config){
 				// encode end of data
 				data.push(0xff, 0x0a);
 				encoded = encode.array(data);
-				response.writeHead(200, {});
-				response.write(encoded, 'binary');
-				response.end();
-				db.actions.remove({sn: get.sn});
+				res.type('binary');
+				res.send(encoded);
+				db.actions.remove({sn: params.sn});
 			});
 		break;
 		case 'locate':
-			response.writeHead(200, {});
-			response.write('ping '+config.server.host+':'+config.server.port+' \r\n');
-			response.write('broad '+config.server.host+':'+config.server.port+' \r\n');
-			response.end();
+			res.send('ping '+config.server.host+':'+config.server.port+' \r\nbroad '+config.server.host+':'+config.server.port+' \r\n');
 		break;
 		default:
-			return false;
+			res.send('');
 		break;
 	}
 	return true;
 }
 server.http.start = function(config){
-	app.use(express.bodyParser());
-	app.use(express.methodOverride());
-	app.use(app.router);
-	app.get('/', function(err, request, response, next){
-	console.log(request);
-		var parsed = url.parse(request.originalUrl, true);
-		var uri = parsed.pathname;
-		var get = parsed.query;
-		//console.log(request.url);
-		var isJSP = uri.match('.jsp') ? !!uri.match('.jsp')[0] : false;				var realuri = isJSP ? uri.replace('.jsp', '').replace('/vl/', '') : '';
-		var get;
-		// HandleURI, if its post, wait for post data to end
-		if (request.method == 'POST') {
-			var body = '';
-			request.on('data', function (data) {
-				body += data;
+	app.set('views', __dirname + '/views');
+    app.set('view engine', 'twig');
+   	app.set('view options', {layout:false});
+	app.configure(function(){
+		app.use(express['static'](__dirname + '/public'));
+		app.use(express.bodyParser());
+		app.use(express.cookieParser('nodetag'));
+		app.use(express.session({cookie: {path: '/', httpOnly: true, maxAge: null}, secret: 'nodetag'}));
+		app.use(app.router);
+	});
+	app.get('/', function(req, res){
+		var isLoggedIn = function(){return req.session && req.session.user;};
+		var username = (isLoggedIn() && req.session.user.username) ? req.session.user.username : "";
+		var rabbits = (isLoggedIn() && req.session.user.rabbits) ? Object.keys(req.session.user.rabbits).length : 0;
+		res.render('index', {
+			'COUNT': rabbits,
+			'USERNAME': username,
+			'loggedin' : isLoggedIn()
+		});
+	});
+	app.get('/rabbits', function(req, res){
+		var isLoggedIn = function(){return req.session && req.session.user;};
+		if(!isLoggedIn()){
+			res.status(500);
+			res.end();
+			return;
+		}
+		loggedinFunc = function(res){
+			if(isLoggedIn() && req.session.user.rabbits){
+				session_rabbits = req.session.user.rabbits;
+				var out = '', o = session_rabbits;
+				for (var p in o) {
+					out += '<li><a href="/rabbit/' + o[p]['sn'] + ' "> ' + o[p]['name'] + '</a> - ' + o[p]['sn'] + '</li>';
+				}
+			}
+			res.status(200);
+			res.render('rabbits', {
+				'RABBITS': out
 			});
-			request.on('end', function () {
-				post = qs.parse(body);
-				server.http.handleURI(request, response, uri, realuri, get, post, isJSP, config);
+		};
+		if(typeof loggedinFunc !== 'undefined'){
+			loggedinFunc(res);
+		}
+	});
+	app.get('/rabbit/:sn', function(req, res){
+		var isLoggedIn = function(){return req.session && req.session.user;};
+		if(!isLoggedIn()){
+			res.status(500);
+			res.end();
+			return;
+		}
+		res.render('rabbit', {
+			'SN': req.params.sn
+		});
+	});
+	app.post('/addBunny', function(req, res){
+		var result = {};
+		var post = req.body;
+		res.status(200);
+		if(!req.session || !req.session.user){
+			res.end('Your not logged in!');
+			return;
+		}
+		if(!post){
+			res.end('No values sent!');
+			return;
+		}
+		if(post.name){
+			name = post.name;
+		}else{
+			name = 'noname';
+		}
+		if(post.sn){
+			sn = post.sn;
+		}else{
+			sn = '01234abcd';
+		}
+		result.name = name;
+		result.sn = sn;
+		req.session.user.rabbits = rabbits = {0: result};
+		db.users.findOne({username: req.session.user.username}, function(err, doc){
+			if(doc){
+				doc.rabbits = rabbits;
+				db.users.update({username: req.session.user.username}, doc, true);
+			}
+		});
+		res.end('Updated!');
+	});
+	app.get('/logout', function(req, res){
+		if(req.session && req.session.user){	
+			delete req.session.user;
+			res.status(302);
+			res.set('Location', '/');
+		}else{
+			res.status(500);
+		}
+		res.end();
+	});
+	app.get('/vl/:action', function(req, res){
+		var action = req.params.action ? req.params.action.replace('.jsp', '') : '';
+		server.http.handleJSP(action, req.params, res, config);
+	});
+	app.get('*', function(req, res){
+		console.log('[404] ' + req.params[0]);
+		res.status(404);
+		res.end('404 Not Found\n');
+	});
+	// API
+	app.post('/api/ambient', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.type){
+				type = post.type;
+			}else{
+				type = 0;
+			}
+			if(post.value){
+				value = post.value;
+			}else{
+				value = Math.floor((Math.random()*18)+1);
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.value = value;
+			result.action = 'ambient';
+			result.type = type;
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/ears', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.left){
+				left = post.left;
+			}else{
+				left = 0;
+			}
+			if(post.right){
+				right = post.right;
+			}else{
+				right = 0;
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.left = left;
+			result.right = right;
+			result.action = 'ears';
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/reboot', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.action = 'reboot';
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/tts', function(req, res){
+		var post = req.body;
+		if(post){
+			var result = {};
+			if(!req.session || !req.session.user){
+				res.end('Your not logged in!');
+				return;
+			}
+			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
+				res.end('This is not your rabbit!');
+				return;
+			}
+			if(post.sn){
+				sn = post.sn;
+			}else{
+				sn = '01234abcd';
+			}
+			result.action = 'tts';
+			result.sn = sn;
+			db.actions.save(result);
+		}
+		res.end('Changed!');
+	});
+	app.post('/api/clear', function(req, res){
+		var result = {};
+		var post = req.body;
+		if(!req.session || !req.session.user){
+			res.end('Your not logged in!');
+			return;
+		}
+		if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
+			res.end('This is not your rabbit!');
+			return;
+		}
+		if(get && post.sn){
+			sn = post.sn;
+		}else{
+			sn = '01234abcd';
+		}
+		result.action = 'clear';
+		result.sn = sn;
+		db.actions.save(result);
+		res.end('Cleared!');
+	});
+	
+	// Auth
+	app.post('/login', function(req, res){
+		if(req.body && req.body.username && req.body.password){
+			User.login(req.body.username, req.body.password, function(answer){
+				if(answer){
+					req.session.user = answer;
+					res.status(302);
+					res.set('Location', '/');
+					res.end();
+				}else{
+					res.end('Wrong username or password.');
+				}
 			});
-	   	}else{
-			server.http.handleURI(request, response, uri, realuri, get, false, isJSP, config);
-	   	}
+		}else{
+			res.end('Please fill out all fields.\n');
+		}
+	});
+	app.post('/register', function(req, res){
+		if(req.body && req.body.username && req.body.password && req.body.email){
+			User.register(req.body.username, req.body.password, req.body.email, function(answer){
+				if(answer){
+					req.session.user = answer;
+					res.status(302);
+					res.set('Location', '/');
+					res.end();
+				}else{
+					res.end('User already exists!');
+				}
+			});
+		}else{
+			res.end('Please fill out all fields.\n');
+		}
 	});
 	app.listen(config.server.port, config.server.host);
 }
