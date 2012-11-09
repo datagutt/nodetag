@@ -105,7 +105,7 @@ server.http.start = function(config){
 		var isLoggedIn = function(){return req.session && req.session.user;};
 		if(!isLoggedIn()){
 			res.status(500);
-			res.end();
+			res.end('You are not logged in!');
 			return;
 		}
 		var loggedinFunc = function(res){
@@ -130,7 +130,7 @@ server.http.start = function(config){
 		var isLoggedIn = function(){return req.session && req.session.user;};
 		if(!isLoggedIn()){
 			res.status(500);
-			res.end();
+			res.end('You are not logged in!');
 			return;
 		}
 		res.render('rabbit', {
@@ -142,7 +142,8 @@ server.http.start = function(config){
 		var post = req.body;
 		res.status(200);
 		if(!req.session || !req.session.user){
-			res.end('Your not logged in!');
+			res.status(500);
+			res.end('You are not logged in!');
 			return;
 		}
 		if(!post){
@@ -177,6 +178,8 @@ server.http.start = function(config){
 			res.set('Location', '/');
 		}else{
 			res.status(500);
+			res.end('You are not logged in!');
+			return;
 		}
 		res.end();
 	});
@@ -195,7 +198,8 @@ server.http.start = function(config){
 		if(post){
 			var result = {};
 			if(!req.session || !req.session.user){
-				res.end('Your not logged in!');
+				res.status(500);
+				res.end('You are not logged in!');
 				return;
 			}
 			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
@@ -230,7 +234,8 @@ server.http.start = function(config){
 		if(post){
 			var result = {};
 			if(!req.session || !req.session.user){
-				res.end('Your not logged in!');
+				res.status(500);
+				res.end('You are not logged in!');
 				return;
 			}
 			if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
