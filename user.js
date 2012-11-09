@@ -1,3 +1,4 @@
+'use strict';
 var User = function(db, encode){
 	this.db = db;
 	this.encode = encode;
@@ -23,7 +24,7 @@ User.prototype.login = function(username, password, func){
 		}
 		func(user);
 	});
-}
+};
 User.prototype.register = function(username, password, email, func){
 	var self = this;
 	var salt = Math.round((new Date().valueOf() * Math.random())) + '';
@@ -47,5 +48,5 @@ User.prototype.register = function(username, password, email, func){
 			func(false);
 		}
 	});
-}
-module.exports.User = User;
+};
+exports.User = User;
