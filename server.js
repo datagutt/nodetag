@@ -1,8 +1,8 @@
 /**
 	© 2012 nodetag, see LICENSE.txt for license.
 **/
-var util = require('util'),
-express = require('express')
+'use strict';
+var express = require('express'),
 twig = require('twig'),
 MemoryStore = require('connect').session.MemoryStore,
 app = express(),
@@ -32,8 +32,9 @@ server.http.getBootcode = function(res){
             res.send(file);
 		});
 	});
-}
+};
 server.http.handleJSP = function(route, params, res, config){
+	console.log(route, params);
 	switch(route){
 		case 'bc':
 			server.http.getBootcode(res);
@@ -54,7 +55,7 @@ server.http.handleJSP = function(route, params, res, config){
 			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
 			// Get from database
 			db.actions.findOne({sn: params.sn}, function(err, doc){
-				var ambient = [];
+				var ambient = [], encoded;
 				// Handle ping
 				console.log('[PINGED]');
 				var data = [0x7f];
@@ -77,11 +78,11 @@ server.http.handleJSP = function(route, params, res, config){
 		break;
 	}
 	return true;
-}
+};
 server.http.start = function(config){
 	app.set('views', __dirname + '/views');
-    app.set('view engine', 'twig');
-   	app.set('view options', {layout:false});
+	app.set('view engine', 'twig');
+	app.set('view options', {layout:false});
 	app.configure(function(){
 		app.use(express['static'](__dirname + '/public'));
 		app.use(express.bodyParser());
@@ -100,18 +101,20 @@ server.http.start = function(config){
 		});
 	});
 	app.get('/rabbits', function(req, res){
+		var out = '';
 		var isLoggedIn = function(){return req.session && req.session.user;};
 		if(!isLoggedIn()){
 			res.status(500);
 			res.end();
 			return;
 		}
-		loggedinFunc = function(res){
+		var loggedinFunc = function(res){
 			if(isLoggedIn() && req.session.user.rabbits){
-				session_rabbits = req.session.user.rabbits;
-				var out = '', o = session_rabbits;
+				var o = req.session.user.rabbits;
 				for (var p in o) {
-					out += '<li><a href="/rabbit/' + o[p]['sn'] + ' "> ' + o[p]['name'] + '</a> - ' + o[p]['sn'] + '</li>';
+					if(o.hasOwnProperty(p)){
+						out += '<li><a href="/rabbit/' + o[p].sn + ' "> ' + o[p].name + '</a> - ' + o[p].sn + '</li>';
+					}
 				}
 			}
 			res.status(200);
@@ -135,7 +138,7 @@ server.http.start = function(config){
 		});
 	});
 	app.post('/addBunny', function(req, res){
-		var result = {};
+		var result = {}, name, sn, rabbits;
 		var post = req.body;
 		res.status(200);
 		if(!req.session || !req.session.user){
@@ -188,7 +191,7 @@ server.http.start = function(config){
 	});
 	// API
 	app.post('/api/ambient', function(req, res){
-		var post = req.body;
+		var post = req.body, type, value, sn;
 		if(post){
 			var result = {};
 			if(!req.session || !req.session.user){
@@ -223,7 +226,7 @@ server.http.start = function(config){
 		res.end('Changed!');
 	});
 	app.post('/api/ears', function(req, res){
-		var post = req.body;
+		var post = req.body, left, right, sn;
 		if(post){
 			var result = {};
 			if(!req.session || !req.session.user){
@@ -258,7 +261,7 @@ server.http.start = function(config){
 		res.end('Changed!');
 	});
 	app.post('/api/reboot', function(req, res){
-		var post = req.body;
+		var post = req.bod, sn;
 		if(post){
 			var result = {};
 			if(!req.session || !req.session.user){
@@ -281,7 +284,7 @@ server.http.start = function(config){
 		res.end('Changed!');
 	});
 	app.post('/api/tts', function(req, res){
-		var post = req.body;
+		var post = req.body, sn;
 		if(post){
 			var result = {};
 			if(!req.session || !req.session.user){
@@ -304,17 +307,17 @@ server.http.start = function(config){
 		res.end('Changed!');
 	});
 	app.post('/api/clear', function(req, res){
-		var result = {};
+		var result = {} , sn;
 		var post = req.body;
 		if(!req.session || !req.session.user){
 			res.end('Your not logged in!');
 			return;
 		}
-		if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && request.session.user.rabbits[0].sn !== post.sn){
+		if(req.session && req.session.user && req.session.user.rabbits[0] && post.sn && req.session.user.rabbits[0].sn !== post.sn){
 			res.end('This is not your rabbit!');
 			return;
 		}
-		if(get && post.sn){
+		if(post.sn){
 			sn = post.sn;
 		}else{
 			sn = '01234abcd';
@@ -359,7 +362,7 @@ server.http.start = function(config){
 		}
 	});
 	app.listen(config.server.port, config.server.host);
-}
+};
 server.start = function(config){
 	// If config exists, use it, else use default.
 	config = config || {
@@ -375,7 +378,7 @@ server.start = function(config){
 			'ears.plugin.js': {},
 			'clear.plugin.js': {}
 		}
-	}
+	};
 	// Connect to db
 	db = db.connect(config.db.database, ['rabbits', 'users', 'actions']);
 	console.log('nodetag started on ' + config.server.host + ':' + config.server.port);
@@ -385,5 +388,5 @@ server.start = function(config){
 	// Init plugins
 	Plugins = exports.Plugins = new Plugins(this);
 	Plugins.load(config.plugins);
-}
+};
 exports.server = server;
