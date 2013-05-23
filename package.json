@@ -1,9 +1,13 @@
 {
-    "name": "nodetag"
-  , "version": "0.0.1"
-  , "private": true
-  , "dependencies": {
-      "express": "2.4.6"
-    , "sessions": "" 
-  }
+    "name": "nodetag",
+    "version": "0.0.1",
+    "private": true,
+    "dependencies": {
+        "express": "",
+        "sessions": "",
+        "twig" : "",
+        "connect" : "",
+        "mime" : "",
+        "mongojs" : ""
+    }
 }
