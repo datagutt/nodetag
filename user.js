@@ -49,4 +49,4 @@ User.prototype.register = function(username, password, email, func){
 		}
 	});
 };
-exports.User = User;
+module.exports = User;

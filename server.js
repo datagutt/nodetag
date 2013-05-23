@@ -8,9 +8,9 @@ MemoryStore = require('connect').session.MemoryStore,
 app = express(),
 fs = require('fs'),
 mime = require('mime'),
-encode = require('./encode.js').encode,
-User = require('./user.js').User,
-Plugins = require('./plugins.js').Plugins;
+encode = require('./encode.js'),
+User = require('./user.js'),
+Plugins = require('./plugins.js');
 var server = {};
 var db = require('mongojs');
 server.http = {};
@@ -22,14 +22,16 @@ server.http.getBootcode = function(res){
 			console.log('[404] Could not find bootcode!');
 			return;
 		}
-		fs.readFile(filename, 'binary', function(err, file) {
-			if(err) {
-				res.type('text/plain');
-				res.send(500, err + '\n');
-			}
-            var type = mime.lookup(filename);
-            res.type(type);
-            res.send(file);
+		fs.stat(filename, function(error, stat){
+			fs.readFile(filename, 'binary', function(err, file) {
+				if(err) {
+					res.type('text/plain');
+					res.send(500, err + '\n');
+				}
+				var type = mime.lookup(filename);
+				res.contentType(type);
+				res.send(file);
+			});
 		});
 	});
 };
@@ -394,4 +396,4 @@ server.start = function(config){
 	Plugins = exports.Plugins = new Plugins(this);
 	Plugins.load(config.plugins);
 };
-exports.server = server;
+module.exports = server;

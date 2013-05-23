@@ -45,4 +45,4 @@ Plugins.prototype = {
 		}
 	}
 };
-exports.Plugins = Plugins;
+module.exports = Plugins;

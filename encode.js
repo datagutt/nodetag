@@ -393,4 +393,4 @@ encode.pack = function(format) {
 
     return result;
 }
-module.exports.encode = encode;
+module.exports = encode;
