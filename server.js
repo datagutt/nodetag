@@ -94,7 +94,7 @@ server.http.start = function(config){
 	});
 	app.get('/', function(req, res){
 		var isLoggedIn = function(){return req.session && req.session.user;};
-		var username = (isLoggedIn() && req.session.user.username) ? req.session.user.username : "";
+		var username = (isLoggedIn() && req.session.user.username) ? req.session.user.username : '';
 		var rabbits = (isLoggedIn() && req.session.user.rabbits) ? Object.keys(req.session.user.rabbits).length : 0;
 		res.render('index', {
 			'COUNT': rabbits,
