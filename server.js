@@ -22,16 +22,11 @@ server.http.getBootcode = function(res){
 			console.log('[404] Could not find bootcode!');
 			return;
 		}
-		fs.stat(filename, function(error, stat){
-			fs.readFile(filename, 'binary', function(err, file) {
-				if(err) {
-					res.type('text/plain');
-					res.send(500, err + '\n');
-				}
-				var type = mime.lookup(filename);
-				res.contentType(type);
-				res.send(file);
-			});
+		res.download(filename, function(err){
+			if(err){
+				res.type('text/plain');
+				res.send(500, err + '\n');
+			}
 		});
 	});
 };
