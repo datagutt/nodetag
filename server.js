@@ -31,15 +31,14 @@ server.http.getBootcode = function(res){
 	});
 };
 server.http.handleJSP = function(route, params, req, res, config){
-	console.log(route, params);
+	//console.log(route, params);
 	switch(route){
 		case 'bc':
 			server.http.getBootcode(res);
 		break;
 		case 'record':
 			if(params && params.sn && req.rawBody){
-				Plugins.fire('record', {'sn': params.sn, 'raw': req.rawBody});
-				res.end();
+				Plugins.fire('record', {'sn': params.sn, 'req': req, 'res': res});
 			}
 		break;
 		case 'p4':
@@ -188,6 +187,9 @@ server.http.start = function(config){
 	app.get('/vl/:action', function(req, res){
 		var action = req.params.action ? req.params.action.replace('.jsp', '') : '';
 		server.http.handleJSP(action, req.query, req, res, config);
+	});
+	app.post('/vl/record.jsp', function(req, res){
+		server.http.handleJSP('record', req.query, req, res, config);
 	});
 	app.get('*', function(req, res){
 		console.log('[404] ' + req.params[0]);
