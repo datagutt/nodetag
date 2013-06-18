@@ -1,5 +1,5 @@
 'use strict';
-var encode = require('./../encode.js').encode;
+var encode = require('./../encode.js');
 exports.init = function(plugins, server){
 	plugins.listen(this, 'ping', function(args){
 		var doc = args.doc;

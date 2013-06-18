@@ -37,7 +37,7 @@ encode.message = function(a, message) {
 	}
 	var code, tmp;
 	// Obfuscating algorithm by Sache
-	var previousChar = 35;
+	var previousChar = 35, currentChar;
 	a.push(0x00);
 	for(var i = 0; i < message.length; i++){
 		currentChar = message.charCodeAt(i);

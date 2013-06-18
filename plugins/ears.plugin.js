@@ -1,5 +1,5 @@
 'use strict';
-var encode = require('./../encode.js').encode;
+var encode = require('./../encode.js');
 // [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 8, 0, 0, 0, 0, 4, '6', 5, '7', 255, 10 ]
 exports.init = function(plugins, server){
 	plugins.listen(this, 'ping', function(args){

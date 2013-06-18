@@ -61,9 +61,10 @@ server.http.handleJSP = function(route, params, res, config){
 				Plugins.fire('ping', {'data': data, 'ambient': ambient, 'doc': doc});
 				// encode end of data
 				data.push(0xff, 0x0a);
+				console.log(data);
 				encoded = encode.array(data);
-				res.type('binary');
-				res.send(encoded);
+				//res.type('binary');
+				res.end(encoded, 'binary');
 				db.actions.remove({sn: params.sn});
 			});
 		break;
@@ -182,7 +183,7 @@ server.http.start = function(config){
 	});
 	app.get('/vl/:action', function(req, res){
 		var action = req.params.action ? req.params.action.replace('.jsp', '') : '';
-		server.http.handleJSP(action, req.params, res, config);
+		server.http.handleJSP(action, req.query, res, config);
 	});
 	app.get('*', function(req, res){
 		console.log('[404] ' + req.params[0]);
