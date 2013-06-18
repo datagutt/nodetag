@@ -76,17 +76,6 @@ server.http.start = function(config){
 	app.configure(function(){
 		app.use(express['static'](__dirname + '/public'));
 		app.use(express.bodyParser());
-		app.use(function(req, res, next){
-			var data = '';
-			req.setEncoding('utf8');
-			req.on('data', function(chunk){ 
-				data += chunk;
-			});
-			req.on('end', function(){
-				req.rawBody = data;
-				next();
-			});
-		});
 		app.use(express.cookieParser('nodetag'));
 		app.use(express.session({cookie: {path: '/', httpOnly: true, maxAge: null}, secret: 'nodetag'}));
 		app.use(app.router);
