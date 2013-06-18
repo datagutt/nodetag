@@ -30,23 +30,17 @@ server.http.getBootcode = function(res){
 		});
 	});
 };
-server.http.handleJSP = function(route, params, res, config){
+server.http.handleJSP = function(route, params, req, res, config){
 	console.log(route, params);
 	switch(route){
 		case 'bc':
 			server.http.getBootcode(res);
 		break;
 		case 'record':
-			// FIXTHIS
-			var post = [];
-			fs.writeFile('./media/'+params.sn+'-audio.wav', post[0], function(err) {
-				if(err){
-					throw err;
-				}else{
-					console.log('The file was saved!');
-				}
-			}); 
-			Plugins.fire('record', {'get': params, 'post': post});
+			if(params && params.sn && req.rawBody){
+				Plugins.fire('record', {'sn': params.sn, 'raw': req.rawBody});
+				res.end();
+			}
 		break;
 		case 'p4':
 			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
@@ -61,7 +55,6 @@ server.http.handleJSP = function(route, params, res, config){
 				Plugins.fire('ping', {'data': data, 'ambient': ambient, 'doc': doc});
 				// encode end of data
 				data.push(0xff, 0x0a);
-				console.log(data);
 				encoded = encode.array(data);
 				//res.type('binary');
 				res.end(encoded, 'binary');
@@ -84,6 +77,17 @@ server.http.start = function(config){
 	app.configure(function(){
 		app.use(express['static'](__dirname + '/public'));
 		app.use(express.bodyParser());
+		app.use(function(req, res, next){
+			var data = '';
+			req.setEncoding('utf8');
+			req.on('data', function(chunk){ 
+				data += chunk;
+			});
+			req.on('end', function(){
+				req.rawBody = data;
+				next();
+			});
+		});
 		app.use(express.cookieParser('nodetag'));
 		app.use(express.session({cookie: {path: '/', httpOnly: true, maxAge: null}, secret: 'nodetag'}));
 		app.use(app.router);
@@ -183,7 +187,7 @@ server.http.start = function(config){
 	});
 	app.get('/vl/:action', function(req, res){
 		var action = req.params.action ? req.params.action.replace('.jsp', '') : '';
-		server.http.handleJSP(action, req.query, res, config);
+		server.http.handleJSP(action, req.query, req, res, config);
 	});
 	app.get('*', function(req, res){
 		console.log('[404] ' + req.params[0]);
