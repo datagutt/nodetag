@@ -4,13 +4,14 @@
 'use strict';
 var express = require('express'),
 twig = require('twig'),
-MemoryStore = require('connect').session.MemoryStore,
-app = express(),
+bodyParser = require('body-parser'),
+cookieParser = require('cookie-parser'),
+expressSession = require('express-session'),app = express(),
 fs = require('fs'),
 mime = require('mime'),
-encode = require('./encode.js'),
-User = require('./user.js'),
-Plugins = require('./plugins.js');
+encode = require('./lib/encode.js'),
+User = require('./lib/user.js'),
+Plugins = require('./lib/plugins.js');
 var server = {};
 var db = require('mongojs');
 server.http = {};
@@ -45,18 +46,16 @@ server.http.handleJSP = function(route, params, req, res, config){
 			// [ 127, 3, 0, 0, 1, 10, 4, 0, 0, 6, 0, 0, 0, 0, 1, 8, 255, 10 ]
 			// Get from database
 			db.actions.findOne({sn: params.sn}, function(err, doc){
-				var ambient = [], encoded;
+				var data = [0x7f, 0x03, 0x00, 0x00, 0x01, 5],
+					ambient = [],
+					encoded;
+
 				// Handle ping
 				console.log('[PINGED]');
-				var data = [0x7f];
-				// encode ping interval block
-				data.push(0x03, 0x00, 0x00, 0x01, 10);
 				Plugins.fire('ping', {'data': data, 'ambient': ambient, 'doc': doc});
-				// encode end of data
+
 				data.push(0xff, 0x0a);
-				encoded = encode.array(data);
-				//res.type('binary');
-				res.end(encoded, 'binary');
+				res.end(encode.array(data), 'binary');
 				db.actions.remove({sn: params.sn});
 			});
 		break;
@@ -73,13 +72,15 @@ server.http.start = function(config){
 	app.set('views', __dirname + '/views');
 	app.set('view engine', 'twig');
 	app.set('view options', {layout:false});
-	app.configure(function(){
-		app.use(express['static'](__dirname + '/public'));
-		app.use(express.bodyParser());
-		app.use(express.cookieParser('nodetag'));
-		app.use(express.session({cookie: {path: '/', httpOnly: true, maxAge: null}, secret: 'nodetag'}));
-		app.use(app.router);
-	});
+	app.use(express['static'](__dirname + '/public'));
+	app.use(bodyParser());
+	app.use(cookieParser('nodetag'));
+	app.use(expressSession({
+		secret: 'secret',
+		cookie: {
+			httpOnly: true
+		}
+	}));
 	app.get('/', function(req, res){
 		var isLoggedIn = function(){return req.session && req.session.user;};
 		var username = (isLoggedIn() && req.session.user.username) ? req.session.user.username : '';
@@ -162,7 +163,7 @@ server.http.start = function(config){
 		res.end('Updated!');
 	});
 	app.get('/logout', function(req, res){
-		if(req.session && req.session.user){	
+		if(req.session && req.session.user){
 			delete req.session.user;
 			res.status(302);
 			res.set('Location', '/');
@@ -325,7 +326,7 @@ server.http.start = function(config){
 		db.actions.save(result);
 		res.end('Cleared!');
 	});
-	
+
 	// Auth
 	app.post('/login', function(req, res){
 		if(req.body && req.body.username && req.body.password){
@@ -372,7 +373,7 @@ server.start = function(config){
 			database : 'nodetag'
 		},
 		plugins: {
-			'ambient.plugis.js': {},
+			'ambient.plugin.js': {},
 			'ears.plugin.js': {},
 			'clear.plugin.js': {}
 		}
@@ -387,4 +388,4 @@ server.start = function(config){
 	Plugins = exports.Plugins = new Plugins(this);
 	Plugins.load(config.plugins);
 };
-module.exports = server;
+server.start(require('./config.local.js'));
