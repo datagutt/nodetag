@@ -3,17 +3,18 @@
 **/
 'use strict';
 var express = require('express'),
-twig = require('twig'),
-bodyParser = require('body-parser'),
-cookieParser = require('cookie-parser'),
-expressSession = require('express-session'),app = express(),
-fs = require('fs'),
-mime = require('mime'),
-encode = require('./lib/encode.js'),
-User = require('./lib/user.js'),
-Plugins = require('./lib/plugins.js');
+	twig = require('twig'),
+	bodyParser = require('body-parser'),
+	cookieParser = require('cookie-parser'),
+	expressSession = require('express-session'),app = express(),
+	fs = require('fs'),
+	mime = require('mime'),
+	encode = require('./lib/encode.js'),
+	User = require('./lib/user.js'),
+	Plugins = require('./lib/plugins.js'),
+	mongojs = require('mongojs');
+var db;
 var server = {};
-var db = require('mongojs');
 server.http = {};
 server.http.getBootcode = function(res){
 	var filename = './firmware/bootcode.bin';
@@ -73,10 +74,15 @@ server.http.start = function(config){
 	app.set('view engine', 'twig');
 	app.set('view options', {layout:false});
 	app.use(express['static'](__dirname + '/public'));
-	app.use(bodyParser());
+	app.use(bodyParser.urlencoded({
+		extended: true
+	}));
 	app.use(cookieParser('nodetag'));
 	app.use(expressSession({
 		secret: 'secret',
+	    proxy: true,
+	    resave: true,
+	    saveUninitialized: true,
 		cookie: {
 			httpOnly: true
 		}
@@ -379,7 +385,7 @@ server.start = function(config){
 		}
 	};
 	// Connect to db
-	db = db.connect(config.db.database, ['rabbits', 'users', 'actions']);
+	db = mongojs(config.db.database, ['rabbits', 'users', 'actions']);
 	console.log('nodetag started on ' + config.server.host + ':' + config.server.port);
 	// Init User
 	User = new User(db, encode);
